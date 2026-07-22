@@ -29,6 +29,8 @@ public class SecurityUser implements UserDetails {
         return user.getUsername();
     }
 
+    public Long getUserId() { return user.getId(); }
+
     // TODO: переопределить, когда добавится фукционал банов и удаления пользователя
     @Override
     public boolean isCredentialsNonExpired() {
