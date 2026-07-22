@@ -9,6 +9,7 @@ import lombok.*;
 @Getter
 @Builder
 @Entity
+@Table(name = "users")
 public class UserEntity {
 
     @Id
@@ -16,7 +17,7 @@ public class UserEntity {
     private Long id;
 
     @Setter
-    @Column(unique = true, nullable = false)
+    @Column(unique = true, nullable = false, length = 50)
     private String username;
 
     @Setter
@@ -29,6 +30,6 @@ public class UserEntity {
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private Role role = Role.USER;
 }
