@@ -47,18 +47,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            String username = jwtService.extractUsername(accessToken);
+            Long userId = jwtService.extractUserId(accessToken);
 
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-            // Пропуск — либо не смогли извлечь username, либо запрос уже аутентифицирован раньше в цепочке.
-            if (username == null || authentication != null) {
+            // Пропуск — либо не смогли извлечь userId, либо запрос уже аутентифицирован раньше в цепочке.
+            if (userId == null || authentication != null) {
                 continueChain(request, response, filterChain);
                 return;
             }
 
-            UserEntity user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User is not found with username: " + username));
+            UserEntity user = userRepository.findById(userId)
+                    .orElseThrow(() -> new UsernameNotFoundException("User is not found with id: " + userId));
 
             SecurityUser securityUser = new SecurityUser(user);
 
