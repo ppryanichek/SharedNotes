@@ -31,6 +31,7 @@ public class JwtService {
 
     /**
      * Генерирует подписанный access-токен для пользователя.
+     *
      * @param user пользователь для которого выпускается токен.
      * @return токен вместе со временем истечения.
      */
@@ -39,7 +40,7 @@ public class JwtService {
         Instant expiresAt = now.plusMillis(expiration);
 
         String accessToken = Jwts.builder()
-                .subject(user.getUsername())
+                .subject(String.valueOf(user.getId()))
                 .claim("role", user.getRole())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
@@ -51,14 +52,16 @@ public class JwtService {
 
     /**
      * Извлекает username (subject) из токена
+     *
      * @throws JwtException если токен невалиден, просрочен или повреждён.
      */
-    public String extractUsername(String accessToken) {
-        return extractAllClaims(accessToken).getSubject();
+    public Long extractUserId(String accessToken) {
+        return Long.valueOf(extractAllClaims(accessToken).getSubject());
     }
 
     /**
      * Извлекает role (claim) из токена
+     *
      * @throws JwtException если токен невалиден, просрочен или повреждён.
      */
     public String extractRole(String accessToken) {
@@ -77,14 +80,15 @@ public class JwtService {
      * Проверяет, что токен валиден, не просрочен и принадлежит указанному пользователю.
      * В отличие от extract-методов, не выбрасывает исключение при проблемах с токеном —
      * любая ошибка приводит к false.
+     *
      * @return false при любой проблеме с токеном
      */
     public boolean isAccessTokenValid(String accessToken, SecurityUser securityUser) {
         if (accessToken == null || accessToken.isBlank()) return false;
 
         try {
-            String username = extractUsername(accessToken);
-            return username.equals(securityUser.getUsername());
+            Long userId = extractUserId(accessToken);
+            return userId.equals(securityUser.getUserId());
         } catch (JwtException e) {
             return false;
         }
