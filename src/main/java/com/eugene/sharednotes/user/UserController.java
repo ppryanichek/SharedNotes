@@ -25,10 +25,13 @@ public class UserController {
         return userService.findAll(pageable);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/id/{id}")
     public UserResponseDTO findById(@PathVariable Long id) {
         return userService.findById(id);
     }
+
+    @GetMapping("/username/{username}")
+    public UserResponseDTO findByUsername(@PathVariable String username) { return userService.findByUsername(username); }
 
     @PostMapping
     public ResponseEntity<UserResponseDTO> createUser(@RequestBody @Valid CreateUserDTO dto) {
