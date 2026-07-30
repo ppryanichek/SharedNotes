@@ -4,25 +4,31 @@ server:
 spring:
   application:
     name: SharedNotes
-
+  # DB
   datasource:
     url: jdbc:postgresql://db:5432/shared_notes
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
+  # Hibernate
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
+
       hibernate:
-        dialect: org.hiberante.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+# JWT
 jwt:
   secret: ${JWT_SECRET}
   access:
-    expiration: 900_000 # 15 min
+    expiration: ${ACCESS_EXPIRATION}
   refresh:
-    expiration: 604_800_000 # 7 days
+    expiration: ${REFRESH_EXPIRATION}
+
+
+debug: true
