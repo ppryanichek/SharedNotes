@@ -63,7 +63,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityUser securityUser = new SecurityUser(user);
 
             if (!jwtService.isAccessTokenValid(accessToken, securityUser)) {
-                respondUnauthorized(response, "Invalid token!");
+                SecurityResponseWriter.writeErrorResponse(
+                        response,
+                        HttpServletResponse.SC_UNAUTHORIZED,
+                        "Invalid token!"
+                );
                 return;
             }
 
@@ -76,11 +80,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(passwordAuthenticationToken);
         } catch (ExpiredJwtException e) {
             log.warn("Expired JWT token: {}", e.getMessage());
-            respondUnauthorized(response, "Token expired!");
+            SecurityResponseWriter.writeErrorResponse(
+                    response,
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "Token expired!"
+            );
             return;
         } catch (JwtException | UsernameNotFoundException e) {
             log.error("JWT authentication failed", e);
-            respondUnauthorized(response, "Invalid token!");
+            SecurityResponseWriter.writeErrorResponse(
+                    response,
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "Invalid token!"
+            );
             return;
         }
 
@@ -91,11 +103,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                HttpServletResponse response,
                                FilterChain filterChain) throws ServletException, IOException {
         filterChain.doFilter(request, response);
-    }
-
-    private void respondUnauthorized(HttpServletResponse response,
-                                     String message) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.getWriter().write(message);
     }
 }
