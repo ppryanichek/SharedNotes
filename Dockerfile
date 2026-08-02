@@ -1,7 +1,17 @@
 # Build сборка
 FROM gradle:8-jdk21-alpine AS build
 WORKDIR /app
-COPY . .
+# Только файлы сборки
+COPY build.gradle.kts settings.gradle.kts ./
+COPY gradle ./gradle
+
+# Зависимости
+RUN gradle dependencies --no-daemon
+
+# Исходники
+COPY src ./src
+
+# Компиляция
 RUN gradle bootJar --no-daemon
 
 # Легковесная сборка (то что остаётся)
