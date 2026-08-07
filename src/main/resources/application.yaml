@@ -29,6 +29,3 @@ jwt:
     expiration: ${ACCESS_EXPIRATION}
   refresh:
     expiration: ${REFRESH_EXPIRATION}
-
-
-debug: true
