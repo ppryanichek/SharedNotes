@@ -84,6 +84,7 @@ public class UserService {
                 .role(createUserDTO.role())
                 .password(passwordEncoder.encode(createUserDTO.password()))
                 .email(createUserDTO.email())
+                .role(createUserDTO.role() != null ? createUserDTO.role() : Role.USER)
                 .build();
 
         userRepository.save(newUser);
