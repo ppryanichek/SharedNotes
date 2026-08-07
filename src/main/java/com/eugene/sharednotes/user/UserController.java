@@ -34,7 +34,7 @@ public class UserController {
     public UserResponse findByUsername(@PathVariable String username) { return userService.findByUsername(username); }
 
     @PostMapping
-    public ResponseEntity<UserResponse> createUser(@RequestBody @Valid CreateUserRequest request) {
+    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
         UserResponse response = userService.createUser(request);
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequestUri()
@@ -47,7 +47,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     public UserResponse updateUser(@PathVariable Long id,
-                                   @RequestBody @Valid UserUpdateRequest request) {
+                                   @Valid @RequestBody UserUpdateRequest request) {
         return userService.updateUser(id, request);
     }
 
