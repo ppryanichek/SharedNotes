@@ -1,8 +1,7 @@
 package com.eugene.sharednotes.auth.jwt;
 
 import com.eugene.sharednotes.auth.dto.GeneratedAccessToken;
-import com.eugene.sharednotes.security.SecurityUser;
-import com.eugene.sharednotes.user.UserEntity;
+import com.eugene.sharednotes.common.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -12,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
@@ -21,10 +21,10 @@ public class JwtService {
     private final SecretKey secretKey;
 
     @Getter
-    private final Long expiration;
+    private final Duration expiration;
 
     public JwtService(@Value("${jwt.secret}") String secretString,
-                      @Value("${jwt.access.expiration}") Long expiration) {
+                      @Value("${jwt.access.expiration}") Duration expiration) {
         this.secretKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secretString));
         this.expiration = expiration;
     }
@@ -32,16 +32,15 @@ public class JwtService {
     /**
      * Генерирует подписанный access-токен для пользователя.
      *
-     * @param user пользователь для которого выпускается токен.
      * @return токен вместе со временем истечения.
      */
-    public GeneratedAccessToken generateAccessToken(UserEntity user) {
+    public GeneratedAccessToken generateAccessToken(Long userId, Role role) {
         Instant now = Instant.now();
-        Instant expiresAt = now.plusMillis(expiration);
+        Instant expiresAt = now.plus(expiration);
 
         String accessToken = Jwts.builder()
-                .subject(String.valueOf(user.getId()))
-                .claim("role", user.getRole())
+                .subject(String.valueOf(userId))
+                .claim("role", role)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .signWith(secretKey)
@@ -83,12 +82,12 @@ public class JwtService {
      *
      * @return false при любой проблеме с токеном
      */
-    public boolean isAccessTokenValid(String accessToken, SecurityUser securityUser) {
+    public boolean isAccessTokenValid(String accessToken, Long expectedUserId) {
         if (accessToken == null || accessToken.isBlank()) return false;
 
         try {
             Long userId = extractUserId(accessToken);
-            return userId.equals(securityUser.getUserId());
+            return userId.equals(expectedUserId);
         } catch (JwtException e) {
             return false;
         }

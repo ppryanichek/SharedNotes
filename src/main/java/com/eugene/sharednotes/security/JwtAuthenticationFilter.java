@@ -62,7 +62,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             SecurityUser securityUser = new SecurityUser(user);
 
-            if (!jwtService.isAccessTokenValid(accessToken, securityUser)) {
+            if (!jwtService.isAccessTokenValid(accessToken, securityUser.getUserId())) {
                 SecurityResponseWriter.writeErrorResponse(
                         response,
                         HttpServletResponse.SC_UNAUTHORIZED,
