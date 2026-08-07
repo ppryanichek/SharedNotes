@@ -1,8 +1,8 @@
 package com.eugene.sharednotes.user;
 
-import com.eugene.sharednotes.user.dto.CreateUserDTO;
-import com.eugene.sharednotes.user.dto.UserResponseDTO;
-import com.eugene.sharednotes.user.dto.UserUpdateDTO;
+import com.eugene.sharednotes.user.dto.CreateUserRequest;
+import com.eugene.sharednotes.user.dto.UserResponse;
+import com.eugene.sharednotes.user.dto.UserUpdateRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,21 +21,21 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
-    public Page<UserResponseDTO> findAll(Pageable pageable) {
+    public Page<UserResponse> findAll(Pageable pageable) {
         return userService.findAll(pageable);
     }
 
     @GetMapping("/id/{id}")
-    public UserResponseDTO findById(@PathVariable Long id) {
+    public UserResponse findById(@PathVariable Long id) {
         return userService.findById(id);
     }
 
     @GetMapping("/username/{username}")
-    public UserResponseDTO findByUsername(@PathVariable String username) { return userService.findByUsername(username); }
+    public UserResponse findByUsername(@PathVariable String username) { return userService.findByUsername(username); }
 
     @PostMapping
-    public ResponseEntity<UserResponseDTO> createUser(@RequestBody @Valid CreateUserDTO dto) {
-        UserResponseDTO response = userService.createUser(dto);
+    public ResponseEntity<UserResponse> createUser(@RequestBody @Valid CreateUserRequest request) {
+        UserResponse response = userService.createUser(request);
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequestUri()
                 .path("/{id}")
@@ -46,9 +46,9 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public UserResponseDTO updateUser(@PathVariable Long id,
-                                      @RequestBody @Valid UserUpdateDTO dto) {
-        return userService.updateUser(id, dto);
+    public UserResponse updateUser(@PathVariable Long id,
+                                   @RequestBody @Valid UserUpdateRequest request) {
+        return userService.updateUser(id, request);
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)

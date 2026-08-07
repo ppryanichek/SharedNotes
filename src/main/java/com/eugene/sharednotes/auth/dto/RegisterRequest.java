@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-public record RegisterRequestDTO(
+public record RegisterRequest(
         @NotBlank
         @Size(min = 2, max = 45)
         String username,

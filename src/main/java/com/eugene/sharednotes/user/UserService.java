@@ -1,10 +1,11 @@
 package com.eugene.sharednotes.user;
 
-import com.eugene.sharednotes.user.dto.CreateUserDTO;
-import com.eugene.sharednotes.user.dto.UserResponseDTO;
-import com.eugene.sharednotes.user.dto.UserUpdateDTO;
+import com.eugene.sharednotes.common.Role;
+import com.eugene.sharednotes.user.dto.CreateUserRequest;
+import com.eugene.sharednotes.user.dto.UserResponse;
 import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
 import com.eugene.sharednotes.exceptions.UserNotFoundException;
+import com.eugene.sharednotes.user.dto.UserUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,8 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Сервис управления пользователями: CRUD-операции над {@link UserEntity}
- * Не отвечает за хеширование пароля — ожидается, что вызывающая сторона
- * передаёт уже обработанное значение.
  */
 @RequiredArgsConstructor
 @Service
@@ -35,8 +34,8 @@ public class UserService {
      *                 </ul>
      * @return постраничное отображение информации о пользователях (за исключением паролей).
      */
-    public Page<UserResponseDTO> findAll(Pageable pageable) {
-        return userRepository.findAll(pageable).map(UserResponseDTO::from);
+    public Page<UserResponse> findAll(Pageable pageable) {
+        return userRepository.findAll(pageable).map(UserResponse::from);
     }
 
     /**
@@ -45,24 +44,24 @@ public class UserService {
      * @return информацию о пользователе (за исключением пароля).
      * @throws UserNotFoundException если пользователь с данным id не найден.
      */
-    public UserResponseDTO findById(Long id) {
+    public UserResponse findById(Long id) {
         UserEntity user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
-        return UserResponseDTO.from(user);
+        return UserResponse.from(user);
 
     }
 
-    public UserResponseDTO findByUsername(String username) {
+    public UserResponse findByUsername(String username) {
         UserEntity user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found with username: " + username));
-        return UserResponseDTO.from(user);
+        return UserResponse.from(user);
     }
 
     /**
      * Создаёт пользователя.
      * Проверяет существование пользователя по полям email и username.
      *
-     * @param createUserDTO валидированные поля для создания пользователя:
+     * @param request валидированные поля для создания пользователя:
      *                      <ul>
      *                          <li>{@code username} имя пользователя,</li>
      *                          <li>{@code password} пароль пользователя (в открытом виде),</li>
@@ -72,60 +71,56 @@ public class UserService {
      * @return информацию о созданном пользователе (за исключением пароля).
      * @throws UserAlreadyExistsException если пользователь с данным email или username уже существует.
      */
-    public UserResponseDTO createUser(CreateUserDTO createUserDTO) {
-        if (userRepository.existsByEmail(createUserDTO.email()))
-            throw new UserAlreadyExistsException("User already exists with this email: " + createUserDTO.email());
+    public UserResponse createUser(CreateUserRequest request) {
+        if (userRepository.existsByEmail(request.email()))
+            throw new UserAlreadyExistsException("User already exists with this email: " + request.email());
 
-        if (userRepository.existsByUsername(createUserDTO.username()))
-            throw new UserAlreadyExistsException("User already exists with this username: " + createUserDTO.username());
+        if (userRepository.existsByUsername(request.username()))
+            throw new UserAlreadyExistsException("User already exists with this username: " + request.username());
 
         UserEntity newUser = UserEntity.builder()
-                .username(createUserDTO.username())
-                .role(createUserDTO.role())
-                .password(passwordEncoder.encode(createUserDTO.password()))
-                .email(createUserDTO.email())
-                .role(createUserDTO.role() != null ? createUserDTO.role() : Role.USER)
+                .username(request.username())
+                .role(request.role() != null ? request.role() : Role.USER)
+                .password(passwordEncoder.encode(request.password()))
+                .email(request.email())
                 .build();
 
         userRepository.save(newUser);
 
-        return UserResponseDTO.from(newUser);
+        return UserResponse.from(newUser);
     }
 
     /**
-     * Изменяет поля существующего пользователя.
+     * Изменяет поля существующего пользователя (за исключением пароля).
      * Проверяет какие поля в запросе ненулевые и применяет изменения в случае несовпадения.
      *
-     * @param updateUserDTO поля, которые необходимо изменить.
+     * @param request поля, которые необходимо изменить.
      * @return новую информацию о пользователе (за исключением пароля).
      * @throws UserNotFoundException      если пользователя с данным id не найден.
      * @throws UserAlreadyExistsException если новый username или email уже занят другим пользователем.
      */
     @Transactional
-    public UserResponseDTO updateUser(Long id, UserUpdateDTO updateUserDTO) {
+    public UserResponse updateUser(Long id, UserUpdateRequest request) {
         UserEntity updateUser = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
 
-        if (updateUserDTO.username() != null && !updateUserDTO.username().isBlank()) {
-            if (!updateUserDTO.username().equals(updateUser.getUsername())
-                    && userRepository.existsByUsername(updateUserDTO.username()))
-                throw new UserAlreadyExistsException("User already exists with this username: " + updateUserDTO.username());
+        if (request.username() != null && !request.username().isBlank()) {
+            if (!request.username().equals(updateUser.getUsername())
+                    && userRepository.existsByUsername(request.username()))
+                throw new UserAlreadyExistsException("User already exists with this username: " + request.username());
 
-            updateUser.setUsername(updateUserDTO.username());
+            updateUser.setUsername(request.username());
         }
 
-        if (updateUserDTO.password() != null && !updateUserDTO.password().isBlank())
-            updateUser.setPassword(passwordEncoder.encode(updateUserDTO.password()));
+        if (request.email() != null && !request.email().isBlank()) {
+            if (!request.email().equals(updateUser.getEmail())
+                    && userRepository.existsByEmail(request.email()))
+                throw new UserAlreadyExistsException("User already exists with this email: " + request.email());
 
-        if (updateUserDTO.email() != null && !updateUserDTO.email().isBlank()) {
-            if (!updateUserDTO.email().equals(updateUser.getEmail())
-                    && userRepository.existsByEmail(updateUserDTO.email()))
-                throw new UserAlreadyExistsException("User already exists with this email: " + updateUserDTO.email());
-
-            updateUser.setEmail(updateUserDTO.email());
+            updateUser.setEmail(request.email());
         }
 
-        return UserResponseDTO.from(updateUser);
+        return UserResponse.from(updateUser);
     }
 
     /**

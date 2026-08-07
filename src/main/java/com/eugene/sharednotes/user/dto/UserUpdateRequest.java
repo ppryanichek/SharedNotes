@@ -4,7 +4,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-public record UserUpdateDTO(
+public record UserUpdateRequest(
         @Size(min = 2, max = 45)
         String username,
 
