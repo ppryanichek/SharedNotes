@@ -12,7 +12,7 @@ public record CreateUserDTO(
         String username,
 
         @Pattern(regexp = "(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}")
-        String passwordHash,
+        String password,
 
         @Email
         String email,
