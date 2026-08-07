@@ -8,9 +8,6 @@ public record UserUpdateDTO(
         @Size(min = 2, max = 45)
         String username,
 
-        @Pattern(regexp = "(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}")
-        String password,
-
         @Email
         String email
 ) {}
