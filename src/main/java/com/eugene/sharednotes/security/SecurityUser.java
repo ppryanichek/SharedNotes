@@ -1,5 +1,6 @@
 package com.eugene.sharednotes.security;
 
+import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.user.UserEntity;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
@@ -30,6 +31,8 @@ public class SecurityUser implements UserDetails {
     }
 
     public Long getUserId() { return user.getId(); }
+
+    public Role getRole() { return user.getRole(); }
 
     // TODO: переопределить, когда добавится фукционал банов и удаления пользователя
     @Override
