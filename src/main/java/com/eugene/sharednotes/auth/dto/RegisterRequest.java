@@ -11,7 +11,10 @@ public record RegisterRequest(
         String username,
 
         @NotBlank
-        @Pattern(regexp = "(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}")
+        @Pattern(
+                regexp = "(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}",
+                message = "Password must be at least 8 characters and include lowercase, uppercase, and digit"
+        )
         String password,
 
         @NotBlank
