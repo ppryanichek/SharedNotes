@@ -30,10 +30,8 @@ public class UserController {
         return userService.findById(id);
     }
 
-    @GetMapping
-    public UserResponse findByUsername(@RequestParam String username) { return userService.findByUsername(username); }
-
-
+    @GetMapping("/username/{username}")
+    public UserResponse findByUsername(@PathVariable String username) { return userService.findByUsername(username); }
 
     @PostMapping
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
