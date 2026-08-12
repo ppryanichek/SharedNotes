@@ -3,9 +3,7 @@ package com.eugene.sharednotes.auth;
 import com.eugene.sharednotes.auth.dto.*;
 import com.eugene.sharednotes.auth.jwt.JwtService;
 import com.eugene.sharednotes.common.Role;
-import com.eugene.sharednotes.exceptions.ExpiredRefreshTokenException;
-import com.eugene.sharednotes.exceptions.RevokedTokenException;
-import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
+import com.eugene.sharednotes.exceptions.*;
 import com.eugene.sharednotes.security.SecurityUser;
 import com.eugene.sharednotes.user.UserService;
 import com.eugene.sharednotes.user.dto.CreateUserRequest;
@@ -16,6 +14,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Сервис управления сессией пользователя.
@@ -50,7 +49,7 @@ public class AuthService {
      *                          <li>{@code password} пароль пользователя (в открытом виде),</li>
      *                          <li>{@code email}    email пользователя.</li>
      *                      </ul>
-     * @return новую пару (refresh и access) токенов
+     * @return {@link TokenPairResponse} новую пару (refresh и access) токенов
      * созданных через {@link #issueTokens(Long, Role)}.
      * @throws UserAlreadyExistsException если пользователь с данным email или username уже существует.
      */
@@ -73,8 +72,10 @@ public class AuthService {
      *                          <li>{@code email}    email пользователя,</li>
      *                          <li>{@code password} пароль пользователя (в открытом виде),</li>
      *                      </ul>
-     * @return новую пару (refresh и access) токенов
+     *
+     * @return {@link TokenPairResponse} новую пару (refresh и access) токенов
      * созданных через {@link #issueTokens(Long, Role)}.
+     *
      * @throws BadCredentialsException если email не найден или неверный пароль.
      */
     public TokenPairResponse login(LoginRequest request) {
