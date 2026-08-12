@@ -1,5 +1,6 @@
 package com.eugene.sharednotes.user;
 
+import com.eugene.sharednotes.common.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -16,4 +17,5 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     boolean existsByUsername(String username);
 
+    boolean existsByRole(Role role);
 }

@@ -136,4 +136,8 @@ public class UserService {
 
         userRepository.deleteById(id);
     }
+
+    public boolean adminExists() {
+        return userRepository.existsByRole(Role.ADMIN);
+    }
 }
