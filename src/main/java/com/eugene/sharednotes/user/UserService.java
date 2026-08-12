@@ -1,6 +1,7 @@
 package com.eugene.sharednotes.user;
 
 import com.eugene.sharednotes.common.Role;
+import com.eugene.sharednotes.exceptions.InvalidPasswordException;
 import com.eugene.sharednotes.user.dto.CreateUserRequest;
 import com.eugene.sharednotes.user.dto.UserResponse;
 import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
@@ -123,6 +124,25 @@ public class UserService {
         }
 
         return UserResponse.from(updateUser);
+    }
+
+    /**
+     * Меняет старый пароль указанного пользователя на новый.
+     * <p>
+     * Новый пароль хешируется перед сохранением.
+     *
+     * @throws UserNotFoundException    если пользователя с данным id не найден.
+     * @throws InvalidPasswordException если текущий пароль неверный.
+     */
+    @Transactional
+    public void changePassword(Long id, String oldPassword, String newPassword) {
+        UserEntity userEntity = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
+
+        if (!passwordEncoder.matches(oldPassword, userEntity.getPassword()))
+            throw new InvalidPasswordException("Current password is incorrect");
+
+        userEntity.setPassword(passwordEncoder.encode(newPassword));
     }
 
     /**

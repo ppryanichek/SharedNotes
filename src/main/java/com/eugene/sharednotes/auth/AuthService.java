@@ -86,6 +86,25 @@ public class AuthService {
     }
 
     /**
+     * Меняет пароль пользователя и перевыпускает сессию.
+     * <p>
+     * Все текущие сессии пользователя отзываются, взамен выдаётся новая пара токенов.
+     *
+     * @param request старый и новый пароли в открытом виде.
+     *
+     * @return {@link TokenPairResponse} новую пару (refresh и access) токенов
+     *
+     * @throws UserNotFoundException    если пользователя с данным id не найден.
+     * @throws InvalidPasswordException если текущий пароль неверный.
+     */
+    @Transactional
+    public TokenPairResponse changePassword(Long userId, Role role, ChangePasswordRequest request) {
+        userService.changePassword(userId, request.oldPassword(), request.newPassword());
+        refreshTokenService.revokeAll(userId);
+        return issueTokens(userId, role);
+    }
+
+    /**
      * Инвалидирует указанный токен.
      * <p>
      * При отсутствии токена не делает ничего.

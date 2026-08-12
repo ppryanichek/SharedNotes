@@ -65,6 +65,13 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(httpStatus.value(), ErrorCode.VALIDATION_FAILED , "Validation failed", errors));
     }
 
+    @ExceptionHandler(InvalidPasswordException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPassword(InvalidPasswordException e) {
+        HttpStatus httpStatus = HttpStatus.UNAUTHORIZED;
+        return ResponseEntity.status(httpStatus)
+                .body(ErrorResponse.of(httpStatus.value(), ErrorCode.INVALID_PASSWORD, e.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception e) {
         log.error("Unhandled exception", e);

@@ -1,9 +1,6 @@
 package com.eugene.sharednotes.auth;
 
-import com.eugene.sharednotes.auth.dto.LoginRequest;
-import com.eugene.sharednotes.auth.dto.RefreshTokenRequest;
-import com.eugene.sharednotes.auth.dto.RegisterRequest;
-import com.eugene.sharednotes.auth.dto.TokenPairResponse;
+import com.eugene.sharednotes.auth.dto.*;
 import com.eugene.sharednotes.security.SecurityUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,5 +39,11 @@ public class AuthController {
     @PostMapping("/logout-all")
     public void logoutAll(@AuthenticationPrincipal SecurityUser principal) {
         authService.logoutAll(principal.getUserId());
+    }
+
+    @PostMapping("/change-password")
+    public TokenPairResponse changePassword(@AuthenticationPrincipal SecurityUser principal,
+                               @Valid @RequestBody ChangePasswordRequest request) {
+        return authService.changePassword(principal.getUserId(), principal.getRole(), request);
     }
 }
