@@ -112,7 +112,7 @@ public class RefreshTokenService {
      * @throws RevokedTokenException если предъявлен отозванный токен (переиспользование) — все сессии пользователя отзываются.
      * @throws ExpiredRefreshTokenException если токен истёк.
      */
-    @Transactional
+    @Transactional(noRollbackFor = RevokedTokenException.class)
     public RotationResult rotate(String oldRawToken) {
         RefreshToken oldRefreshToken = validate(oldRawToken);
         oldRefreshToken.setRevoked(true);
@@ -136,7 +136,8 @@ public class RefreshTokenService {
      */
     @Transactional
     public void revokeAll(Long userId) {
-        refreshTokenRepository.revokeAllByUserId(userId);
+        int revoked = refreshTokenRepository.revokeAllByUserId(userId);
+        log.info("Revoked {} sessions for user {}", revoked, userId);
     }
 
 
