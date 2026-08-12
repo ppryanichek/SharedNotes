@@ -126,15 +126,15 @@ public class AuthService {
      * <p>
      * Ротация делегируется {@link RefreshTokenService#rotate(String)}.
      *
-     * @return новую пару (refresh и access) токенов,
-     * созданных через {@link #issueTokens(Long, Role)}.
+     * @return {@link TokenPairResponse} новую пару (refresh и access) токенов.
      * @throws BadCredentialsException если токен не найден.
      * @throws RevokedTokenException если предъявлен отозванный токен (переиспользование) — все сессии пользователя отзываются.
      * @throws ExpiredRefreshTokenException если токен истёк.
      */
     public TokenPairResponse refresh(String refreshToken) {
         RotationResult result = refreshTokenService.rotate(refreshToken);
-        return issueTokens(result.userId(), result.role());
+        GeneratedAccessToken access = jwtService.generateAccessToken(result.userId(), result.role());
+        return new TokenPairResponse(access.token(), result.rawRefreshToken());
     }
 
     /**
