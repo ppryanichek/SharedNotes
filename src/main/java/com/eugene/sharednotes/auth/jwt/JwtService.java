@@ -1,7 +1,6 @@
 package com.eugene.sharednotes.auth.jwt;
 
 import com.eugene.sharednotes.auth.dto.GeneratedAccessToken;
-import com.eugene.sharednotes.common.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -34,13 +33,12 @@ public class JwtService {
      *
      * @return токен вместе со временем истечения.
      */
-    public GeneratedAccessToken generateAccessToken(Long userId, Role role) {
+    public GeneratedAccessToken generateAccessToken(Long userId) {
         Instant now = Instant.now();
         Instant expiresAt = now.plus(expiration);
 
         String accessToken = Jwts.builder()
                 .subject(String.valueOf(userId))
-                .claim("role", role)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .signWith(secretKey)
@@ -58,13 +56,6 @@ public class JwtService {
         return Long.valueOf(extractAllClaims(accessToken).getSubject());
     }
 
-    /**
-     * Извлекает role (claim) из токена
-     *
-     * @throws JwtException если токен невалиден, просрочен или повреждён.
-     */
-    public String extractRole(String accessToken) {
-        return extractAllClaims(accessToken).get("role", String.class);
     }
 
     private Claims extractAllClaims(String accessToken) {

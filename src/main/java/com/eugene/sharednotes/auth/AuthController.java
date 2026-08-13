@@ -44,6 +44,6 @@ public class AuthController {
     @PostMapping("/change-password")
     public TokenPairResponse changePassword(@AuthenticationPrincipal SecurityUser principal,
                                @Valid @RequestBody ChangePasswordRequest request) {
-        return authService.changePassword(principal.getUserId(), principal.getRole(), request);
+        return authService.changePassword(principal.getUserId(), request);
     }
 }

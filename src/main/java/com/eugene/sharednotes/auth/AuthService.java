@@ -50,7 +50,7 @@ public class AuthService {
      *                          <li>{@code email}    email пользователя.</li>
      *                      </ul>
      * @return {@link TokenPairResponse} новую пару (refresh и access) токенов
-     * созданных через {@link #issueTokens(Long, Role)}.
+     * созданных через {@link #issueTokens(Long)}.
      * @throws UserAlreadyExistsException если пользователь с данным email или username уже существует.
      */
     public TokenPairResponse register(RegisterRequest request) {
@@ -61,7 +61,7 @@ public class AuthService {
                 request.email(),
                 defaultRole
         ));
-        return issueTokens(userResponse.id(), userResponse.role());
+        return issueTokens(userResponse.id());
     }
 
     /**
@@ -74,7 +74,7 @@ public class AuthService {
      *                      </ul>
      *
      * @return {@link TokenPairResponse} новую пару (refresh и access) токенов
-     * созданных через {@link #issueTokens(Long, Role)}.
+     * созданных через {@link #issueTokens(Long)}.
      *
      * @throws BadCredentialsException если email не найден или неверный пароль.
      */
@@ -83,7 +83,7 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
         SecurityUser principal = (SecurityUser) auth.getPrincipal();
-        return issueTokens(principal.getUserId(), principal.getRole());
+        return issueTokens(principal.getUserId());
     }
 
     /**
@@ -99,10 +99,10 @@ public class AuthService {
      * @throws InvalidPasswordException если текущий пароль неверный.
      */
     @Transactional
-    public TokenPairResponse changePassword(Long userId, Role role, ChangePasswordRequest request) {
+    public TokenPairResponse changePassword(Long userId, ChangePasswordRequest request) {
         userService.changePassword(userId, request.oldPassword(), request.newPassword());
         refreshTokenService.revokeAll(userId);
-        return issueTokens(userId, role);
+        return issueTokens(userId);
     }
 
     /**
@@ -133,7 +133,7 @@ public class AuthService {
      */
     public TokenPairResponse refresh(String refreshToken) {
         RotationResult result = refreshTokenService.rotate(refreshToken);
-        GeneratedAccessToken access = jwtService.generateAccessToken(result.userId(), result.role());
+        GeneratedAccessToken access = jwtService.generateAccessToken(result.userId());
         return new TokenPairResponse(access.token(), result.rawRefreshToken());
     }
 
@@ -141,8 +141,8 @@ public class AuthService {
      * Генерирует токены.
      * @return новую пару токенов в сыром виде.
      */
-    private TokenPairResponse issueTokens(Long userId, Role role) {
-        GeneratedAccessToken access = jwtService.generateAccessToken(userId, role);
+    private TokenPairResponse issueTokens(Long userId) {
+        GeneratedAccessToken access = jwtService.generateAccessToken(userId);
         String refreshToken = refreshTokenService.create(userId);
         return new TokenPairResponse(access.token(), refreshToken);
     }

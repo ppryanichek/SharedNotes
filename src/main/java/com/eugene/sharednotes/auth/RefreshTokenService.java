@@ -122,7 +122,7 @@ public class RefreshTokenService {
         RefreshToken oldRefreshToken = validate(oldRawToken);
         oldRefreshToken.setRevoked(true);
         UserEntity user = oldRefreshToken.getUser();
-        return new RotationResult(create(user.getId()), user.getId(), user.getRole());
+        return new RotationResult(create(user.getId()), user.getId());
     }
 
     /**
