@@ -1,5 +1,6 @@
 package com.eugene.sharednotes.security;
 
+import com.eugene.sharednotes.common.Role;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -40,6 +41,7 @@ public class SecurityConfig {
                                 "/auth/refresh",
                                 "/auth/logout"
                                 ).permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(e -> e
