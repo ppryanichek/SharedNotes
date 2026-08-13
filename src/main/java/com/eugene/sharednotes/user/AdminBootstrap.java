@@ -17,9 +17,9 @@ public class AdminBootstrap implements CommandLineRunner {
 
     public AdminBootstrap(
             UserService userService,
-            @Value("${ADMIN_USERNAME:TestAdmin}") String adminUsername,
-            @Value("${ADMIN_EMAIL:}") String adminEmail,
-            @Value("${ADMIN_PASSWORD:}") String adminPassword) {
+            @Value("${admin.username:TestAdmin}") String adminUsername,
+            @Value("${admin.email:}") String adminEmail,
+            @Value("${admin.password:}") String adminPassword) {
         this.userService = userService;
         this.adminUsername = adminUsername;
         this.adminEmail = adminEmail;
