@@ -4,6 +4,7 @@ import com.eugene.sharednotes.auth.dto.GeneratedAccessToken;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.Keys;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
@@ -53,9 +54,13 @@ public class JwtService {
      * @throws JwtException если токен невалиден, просрочен или повреждён.
      */
     public Long extractUserId(String accessToken) {
-        return Long.valueOf(extractAllClaims(accessToken).getSubject());
-    }
+        String subject = extractAllClaims(accessToken).getSubject();
 
+        try {
+            return Long.valueOf(subject);
+        } catch (NumberFormatException e) {
+            throw new MalformedJwtException("Subject не является корректным userId: " + subject, e);
+        }
     }
 
     private Claims extractAllClaims(String accessToken) {
