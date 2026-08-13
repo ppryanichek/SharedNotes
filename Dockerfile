@@ -14,7 +14,7 @@ COPY src ./src
 # Компиляция
 RUN gradle bootJar --no-daemon
 
-# Легковесная сборка (то что остаётся)
+# Легковесная сборка
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar

@@ -14,6 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 
 /**
  * Сервис управления пользователями: CRUD-операции над {@link UserEntity}
@@ -146,15 +148,18 @@ public class UserService {
     }
 
     /**
-     * Удаляет существующего пользователя.
+     * Удаляет существующего пользователя (soft delete).
+     * <p>
+     * Ищет указанного пользователя в системе и устанавливает {@code deletedAt} на текущее время удаления.
      *
      * @throws UserNotFoundException если пользователь с данным id не найден.
      */
+    @Transactional
     public void deleteUser(Long id) {
-        if (!userRepository.existsById(id))
-            throw new UserNotFoundException("User not found with id: " + id);
+        UserEntity userEntity = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
 
-        userRepository.deleteById(id);
+        userEntity.setDeletedAt(Instant.now());
     }
 
     public boolean adminExists() {
