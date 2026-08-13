@@ -1,5 +1,6 @@
 package com.eugene.sharednotes.user;
 
+import com.eugene.sharednotes.auth.RefreshTokenService;
 import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.exceptions.InvalidPasswordException;
 import com.eugene.sharednotes.user.dto.CreateUserRequest;
@@ -25,6 +26,7 @@ import java.time.Instant;
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
 
     /**
      * Возвращает постраничный список всех пользователей без фильтрации.
@@ -151,7 +153,8 @@ public class UserService {
      * Удаляет существующего пользователя (soft delete).
      * <p>
      * Ищет указанного пользователя в системе и устанавливает {@code deletedAt} на текущее время удаления.
-     *
+     * <p>
+     * Завершает все текущие сессии пользователя.
      * @throws UserNotFoundException если пользователь с данным id не найден.
      */
     @Transactional
@@ -160,6 +163,7 @@ public class UserService {
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
 
         userEntity.setDeletedAt(Instant.now());
+        refreshTokenService.revokeAll(id);
     }
 
     public boolean adminExists() {
