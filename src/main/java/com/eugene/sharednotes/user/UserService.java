@@ -20,6 +20,9 @@ import java.time.Instant;
 
 /**
  * Сервис управления пользователями: CRUD-операции над {@link UserEntity}
+ * <p>
+ * Все методы работают только с активными пользователями: мягко удалённые
+ * пользователи исключаются автоматически через {@link UserEntity} ({@code @SQLRestriction}).
  */
 @RequiredArgsConstructor
 @Service
@@ -29,7 +32,7 @@ public class UserService {
     private final RefreshTokenService refreshTokenService;
 
     /**
-     * Возвращает постраничный список всех пользователей без фильтрации.
+     * Возвращает постраничный список всех пользователей.
      *
      * @param pageable параметры пагинации:
      *                 <ul>
@@ -56,6 +59,12 @@ public class UserService {
 
     }
 
+    /**
+     * Возвращает пользователя c указанным username.
+     *
+     * @return информацию о пользователе (за исключением пароля).
+     * @throws UserNotFoundException если пользователь с данным username не найден.
+     */
     public UserResponse findByUsername(String username) {
         UserEntity user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found with username: " + username));
@@ -99,11 +108,12 @@ public class UserService {
 
     /**
      * Изменяет поля существующего пользователя (за исключением пароля).
-     * Проверяет какие поля в запросе ненулевые и применяет изменения в случае несовпадения.
+     * <p>
+     * {@code null}-поля игнорируются, а не затирают значение.
      *
      * @param request поля, которые необходимо изменить.
      * @return новую информацию о пользователе (за исключением пароля).
-     * @throws UserNotFoundException      если пользователя с данным id не найден.
+     * @throws UserNotFoundException      если пользователь с данным id не найден.
      * @throws UserAlreadyExistsException если новый username или email уже занят другим пользователем.
      */
     @Transactional
@@ -135,7 +145,7 @@ public class UserService {
      * <p>
      * Новый пароль хешируется перед сохранением.
      *
-     * @throws UserNotFoundException    если пользователя с данным id не найден.
+     * @throws UserNotFoundException    если пользователь с данным id не найден.
      * @throws InvalidPasswordException если текущий пароль неверный.
      */
     @Transactional
