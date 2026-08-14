@@ -1,5 +1,6 @@
 package com.eugene.sharednotes.auth;
 
+import com.eugene.sharednotes.common.Tokens;
 import com.eugene.sharednotes.exceptions.ExpiredRefreshTokenException;
 import com.eugene.sharednotes.exceptions.RevokedTokenException;
 import com.eugene.sharednotes.user.UserEntity;
@@ -11,14 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.HexFormat;
 
 /**
  * <p>Сервис управления refresh-токенами {@link RefreshToken}.</p>
@@ -30,7 +25,6 @@ import java.util.HexFormat;
 @Service
 public class RefreshTokenService {
 
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserRepository userRepository;
@@ -46,7 +40,7 @@ public class RefreshTokenService {
     }
 
     /**
-     * Генерирует новый токен с помощью метода {@link #generateRandomToken()} и сохраняет его в БД.
+     * Генерирует новый токен с помощью метода {@link Tokens#generateRandomToken()} и сохраняет его в БД.
      * <p>
      * Собирает токен со следующей информацией:
      *                      <ul>
@@ -60,10 +54,10 @@ public class RefreshTokenService {
      */
     @Transactional
     public String create(Long userId) {
-        String token = generateRandomToken();
+        String token = Tokens.generateRandomToken();
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(userRepository.getReferenceById(userId))
-                .tokenHash(hash(token))
+                .tokenHash(Tokens.hash(token))
                 .expiresAt(Instant.now().plus(expiration))
                 .build();
 
@@ -86,7 +80,7 @@ public class RefreshTokenService {
      */
     private RefreshToken validate(String rawToken) {
         RefreshToken refreshToken = refreshTokenRepository
-                .findByTokenHash(hash(rawToken))
+                .findByTokenHash(Tokens.hash(rawToken))
                 .orElseThrow(() -> new BadCredentialsException("Invalid refresh token!"));
 
         if (refreshToken.isRevoked()) {
@@ -132,7 +126,7 @@ public class RefreshTokenService {
      */
     @Transactional
     public void revoke(String rawToken) {
-        refreshTokenRepository.findByTokenHash(hash(rawToken))
+        refreshTokenRepository.findByTokenHash(Tokens.hash(rawToken))
                 .ifPresent(token -> token.setRevoked(true));
     }
 
@@ -143,22 +137,5 @@ public class RefreshTokenService {
     public void revokeAll(Long userId) {
         int revoked = refreshTokenRepository.revokeAllByUserId(userId);
         log.info("Revoked {} sessions for user {}", revoked, userId);
-    }
-
-
-    private String generateRandomToken() {
-        byte[] bytes = new byte[32];
-        SECURE_RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private String hash(String token) {
-        try{
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = digest.digest(token.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hashBytes);
-        }catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 algorithm not available", e);
-        }
     }
 }
