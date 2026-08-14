@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
@@ -19,14 +20,17 @@ import java.util.Date;
 @Service
 public class JwtService {
     private final SecretKey secretKey;
+    private final Clock clock;
 
     @Getter
     private final Duration expiration;
 
     public JwtService(@Value("${jwt.secret}") String secretString,
-                      @Value("${jwt.access.expiration}") Duration expiration) {
+                      @Value("${jwt.access.expiration}") Duration expiration,
+                      Clock clock) {
         this.secretKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secretString));
         this.expiration = expiration;
+        this.clock = clock;
     }
 
     /**
@@ -35,7 +39,7 @@ public class JwtService {
      * @return токен вместе со временем истечения.
      */
     public GeneratedAccessToken generateAccessToken(Long userId) {
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         Instant expiresAt = now.plus(expiration);
 
         String accessToken = Jwts.builder()
@@ -66,6 +70,7 @@ public class JwtService {
     private Claims extractAllClaims(String accessToken) {
         return Jwts.parser()
                 .verifyWith(secretKey)
+                .clock(() -> Date.from(Instant.now(clock)))
                 .build()
                 .parseSignedClaims(accessToken)
                 .getPayload();
