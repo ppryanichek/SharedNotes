@@ -1,3 +1,4 @@
+
 plugins {
 	java
 	id("org.springframework.boot") version "4.0.3"
@@ -23,6 +24,8 @@ configurations {
 repositories {
 	mavenCentral()
 }
+
+val mockitoAgent by configurations.creating
 
 dependencies {
 	// Web / MVC
@@ -54,10 +57,13 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-security-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
-	runtimeOnly("com.h2database:h2")
+	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	mockitoAgent("org.mockito:mockito-core") {isTransitive = false}
+	testRuntimeOnly("com.h2database:h2")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.withType<Test> {
+tasks.test {
 	useJUnitPlatform()
+	jvmArgs("-javaagent:${mockitoAgent.asPath}")
 }
