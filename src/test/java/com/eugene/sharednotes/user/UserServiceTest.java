@@ -1,0 +1,378 @@
+package com.eugene.sharednotes.user;
+
+import com.eugene.sharednotes.auth.RefreshTokenService;
+import com.eugene.sharednotes.common.Role;
+import com.eugene.sharednotes.exceptions.InvalidPasswordException;
+import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
+import com.eugene.sharednotes.exceptions.UserNotFoundException;
+import com.eugene.sharednotes.user.dto.CreateUserRequest;
+import com.eugene.sharednotes.user.dto.UserResponse;
+import com.eugene.sharednotes.user.dto.UserUpdateRequest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    private static final Instant FIXED_NOW = Instant.parse("2026-01-01T12:00:00Z");
+    private static final Clock FIXED_CLOCK = Clock.fixed(FIXED_NOW, ZoneOffset.UTC);
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;
+
+    private UserService userService;
+
+    private UserEntity existingUser;
+
+    @BeforeEach
+    void setUp() {
+
+        userService = new UserService(userRepository, passwordEncoder, refreshTokenService, FIXED_CLOCK);
+
+        existingUser = UserEntity.builder()
+                .id(1L)
+                .username("eugene")
+                .email("eugene@mail.ru")
+                .password("hashed-1234Qwer@")
+                .build();
+    }
+
+    @Nested
+    class FindById {
+
+        @Test
+        void shouldReturnUser_whenUserExists() {
+            Long userId = 1L;
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
+
+            UserResponse response = userService.findById(userId);
+
+            assertThat(response.id()).isEqualTo(userId);
+            assertThat(response.username()).isEqualTo("eugene");
+            assertThat(response.email()).isEqualTo("eugene@mail.ru");
+        }
+
+        @Test
+        void shouldThrowUserNotFoundException_whenUserDoesNotExist() {
+            when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.findById(999L))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+    }
+
+    @Nested
+    class FindByUsername {
+
+        @Test
+        void shouldReturnUser_whenUserExists() {
+            when(userRepository.findByUsername("eugene")).thenReturn(Optional.of(existingUser));
+
+            UserResponse response = userService.findByUsername("eugene");
+
+            assertThat(response.id()).isEqualTo(1L);
+            assertThat(response.username()).isEqualTo("eugene");
+            assertThat(response.email()).isEqualTo("eugene@mail.ru");
+        }
+
+        @Test
+        void shouldThrowUserNotFoundException_whenUserDoesNotExist() {
+            when(userRepository.findByUsername("user")).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.findByUsername("user"))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+    }
+
+    @Nested
+    class CreateUser {
+
+        private static final CreateUserRequest createRequestBase = new CreateUserRequest(
+                "Bob",
+                "Password1@",
+                "bob@mail.ru",
+                Role.USER
+        );
+
+        @Test
+        void shouldThrowUserAlreadyExistsException_whenUsernameIsTaken() {
+            when(userRepository.existsByUsername("Bob")).thenReturn(true);
+
+            assertThatThrownBy(() -> userService.createUser(createRequestBase))
+                    .isInstanceOf(UserAlreadyExistsException.class);
+
+            verify(userRepository, never()).save(any(UserEntity.class));
+        }
+
+        @Test
+        void shouldThrowUserAlreadyExistsException_whenEmailIsTaken() {
+            when(userRepository.existsByEmail("bob@mail.ru")).thenReturn(true);
+
+            assertThatThrownBy(() -> userService.createUser(createRequestBase))
+                    .isInstanceOf(UserAlreadyExistsException.class);
+
+            verify(userRepository, never()).save(any(UserEntity.class));
+        }
+
+        @Test
+        void shouldCreateUser_whenDataIsValid() {
+            when(passwordEncoder.encode("Password1@")).thenReturn("hashed-password");
+
+            UserResponse response = userService.createUser(createRequestBase);
+
+            assertThat(response.username()).isEqualTo("Bob");
+            assertThat(response.email()).isEqualTo("bob@mail.ru");
+            assertThat(response.role()).isEqualTo(Role.USER);
+        }
+
+        @Test
+        void shouldHashPasswordBeforeSaving() {
+            when(passwordEncoder.encode("Password1@")).thenReturn("hashed-password");
+
+            userService.createUser(createRequestBase);
+
+            ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
+            verify(userRepository).save(captor.capture());
+
+            assertThat(captor.getValue().getPassword()).isEqualTo("hashed-password");
+        }
+
+        @Test
+        void shouldSetDefaultRole_whenRoleFieldIsNull() {
+            CreateUserRequest request = new CreateUserRequest(
+                    "Bob",
+                    "Password1@",
+                    "bob@mail.ru",
+                    null
+            );
+
+            UserResponse response = userService.createUser(request);
+
+            assertThat(response.role()).isEqualTo(Role.USER);
+        }
+
+        @Test
+        void shouldSetRole_whenRoleFieldIsNotNull() {
+            CreateUserRequest request = new CreateUserRequest(
+                    "Bob",
+                    "Password1@",
+                    "bob@mail.ru",
+                    Role.ADMIN
+            );
+
+            UserResponse response = userService.createUser(request);
+
+            assertThat(response.role()).isEqualTo(Role.ADMIN);
+        }
+    }
+
+    @Nested
+    class UpdateUser {
+
+        private static UserUpdateRequest updateRequest(String username, String email) {
+            return new UserUpdateRequest(username, email);
+        }
+
+        // Username
+        @ParameterizedTest
+        @NullAndEmptySource
+        @ValueSource(strings = {"   "})
+        void shouldNotChangeUsername_whenUsernameIsNullOrBlank(String username) {
+            when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+
+            userService.updateUser(1L, updateRequest(username, null));
+
+            assertThat(existingUser.getUsername()).isEqualTo("eugene");
+        }
+
+        @Test
+        void shouldUpdateUsername_whenUsernameIsFree() {
+            when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+
+            userService.updateUser(1L, updateRequest("newUsername", null));
+
+            assertThat(existingUser.getUsername()).isEqualTo("newUsername");
+        }
+
+        @Test
+        void shouldThrowUserAlreadyExistsException_whenNewUsernameIsTaken() {
+            when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+            when(userRepository.existsByUsername("newUsername")).thenReturn(true);
+
+            assertThatThrownBy(() ->
+                    userService.updateUser(1L, updateRequest("newUsername", null)))
+                    .isInstanceOf(UserAlreadyExistsException.class);
+        }
+
+        @Test
+        void shouldNotCheckExistence_whenUsernameIsUnchanged() {
+            when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+
+            userService.updateUser(1L, updateRequest("eugene", null));
+
+            verify(userRepository, never()).existsByUsername(any());
+            assertThat(existingUser.getUsername()).isEqualTo("eugene");
+        }
+
+        // Email
+        @ParameterizedTest
+        @NullAndEmptySource
+        @ValueSource(strings = {"   "})
+        void shouldNotChangeEmail_whenEmailIsNullOrBlank(String email) {
+            when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+
+            userService.updateUser(1L, updateRequest(null, email));
+
+            assertThat(existingUser.getEmail()).isEqualTo("eugene@mail.ru");
+        }
+
+        @Test
+        void shouldUpdateEmail_whenEmailIsFree() {
+            when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+
+            userService.updateUser(1L, updateRequest(null, "newEmail@mail.ru"));
+
+            assertThat(existingUser.getEmail()).isEqualTo("newEmail@mail.ru");
+        }
+
+        @Test
+        void shouldThrowUserAlreadyExistsException_whenNewEmailIsTaken() {
+            when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+            when(userRepository.existsByEmail("newEmail@mail.ru")).thenReturn(true);
+
+            assertThatThrownBy(() ->
+                    userService.updateUser(1L, updateRequest(null, "newEmail@mail.ru")))
+                    .isInstanceOf(UserAlreadyExistsException.class);
+        }
+
+        @Test
+        void shouldNotCheckExistence_whenEmailIsUnchanged() {
+            when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+
+            userService.updateUser(1L, updateRequest(null, "eugene@mail.ru"));
+
+            verify(userRepository, never()).existsByEmail(any());
+            assertThat(existingUser.getEmail()).isEqualTo("eugene@mail.ru");
+        }
+
+        @Test
+        void shouldThrowUserNotFoundException_whenUserDoesNotExist() {
+            when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() ->
+                    userService.updateUser(1L, updateRequest(null, null)))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+    }
+
+    @Nested
+    class ChangePassword {
+
+        @Test
+        void shouldThrowUserNotFoundException_whenUserDoesNotExist() {
+            when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.changePassword(1L, "", ""))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+
+        @Test
+        void shouldThrowInvalidPasswordException_whenOldPasswordInvalid() {
+            when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+            when(passwordEncoder.matches("wrongPass", "hashed-1234Qwer@")).thenReturn(false);
+
+            assertThatThrownBy(() -> userService.changePassword(1L, "wrongPass", "newPass"))
+                    .isInstanceOf(InvalidPasswordException.class);
+
+            assertThat(existingUser.getPassword()).isEqualTo("hashed-1234Qwer@");
+        }
+
+        @Test
+        void shouldChangePassword_whenDataIsValid() {
+            when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+            when(passwordEncoder.matches("1234Qwer@", "hashed-1234Qwer@")).thenReturn(true);
+            when(passwordEncoder.encode("newPass")).thenReturn("newPass-hash");
+
+            userService.changePassword(1L, "1234Qwer@", "newPass");
+
+            assertThat(existingUser.getPassword()).isEqualTo("newPass-hash");
+        }
+    }
+
+    @Nested
+    class DeleteUser {
+
+        @Test
+        void shouldThrowUserNotFoundExceptionAndNotRevoke_whenUserDoesNotExist() {
+            when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.deleteUser(1L))
+                    .isInstanceOf(UserNotFoundException.class);
+
+            verify(refreshTokenService, never()).revokeAll(any());
+        }
+
+        @Test
+        void shouldSoftDeleteUserAndRevokeSessions() {
+            Long userId = 1L;
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
+
+            userService.deleteUser(userId);
+
+            assertThat(existingUser.getDeletedAt()).isEqualTo(FIXED_NOW);
+            verify(refreshTokenService).revokeAll(userId);
+        }
+
+    }
+
+    @Test
+    void findAll_shouldReturnPageOfUsersResponse() {
+        Page<UserEntity> page = new PageImpl<>(List.of(existingUser));
+
+        when(userRepository.findAll(any(Pageable.class))).thenReturn(page);
+
+        Page<UserResponse> result = userService.findAll(Pageable.unpaged());
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().getFirst().username()).isEqualTo(existingUser.getUsername());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void adminExists_shouldReturnRepositoryResult(boolean exists) {
+        when(userRepository.existsByRole(Role.ADMIN)).thenReturn(exists);
+
+        assertThat(userService.adminExists()).isEqualTo(exists);
+    }
+}
