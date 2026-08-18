@@ -24,8 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Тесты {@link JwtService}.
- * <p>
- * Время фиксируется через {@link Clock}, поэтому проверки срока жизни токена
+ * <p>Время фиксируется через {@link Clock}, поэтому проверки срока жизни токена
  * детерминированы и не зависят от даты запуска.
  */
 public class JwtServiceTest {
