@@ -17,6 +17,12 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
 
+/**
+ * Сервис работы с access-токенами: генерация, парсинг, валидация.
+ * <p>Subject токена — id пользователя, потому что он стабилен в отличие от username.
+ * <p>Время берётся из внедрённого {@link Clock} — используется при генерации
+ * и при проверке срока жизни внутри парсера.
+ */
 @Service
 public class JwtService {
     private final SecretKey secretKey;
@@ -67,6 +73,7 @@ public class JwtService {
         }
     }
 
+    // JJWT сверяет со своими часами — подставляем те же что при генерации.
     private Claims extractAllClaims(String accessToken) {
         return Jwts.parser()
                 .verifyWith(secretKey)
