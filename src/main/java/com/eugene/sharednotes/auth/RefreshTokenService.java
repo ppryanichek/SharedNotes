@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -19,6 +20,8 @@ import java.time.Instant;
  * Сервис управления refresh-токенами {@link RefreshToken}.
  * <p>Токены хранятся в БД для возможности детекта кражи.
  * <p>Используется алгоритм SHA-256 для детерминированного поиска токена в БД.
+ * <p>Время берётся из внедрённого {@link Clock}: срок жизни и проверка
+ * на истечение считаются от одного источника.
  */
 
 @Slf4j
@@ -28,15 +31,18 @@ public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserRepository userRepository;
+    private final Clock clock;
 
     private final Duration expiration;
 
     public RefreshTokenService(RefreshTokenRepository refreshTokenRepository,
                                UserRepository userRepository,
-                               @Value("${jwt.refresh.expiration}") Duration expiration) {
+                               @Value("${jwt.refresh.expiration}") Duration expiration,
+                               Clock clock) {
         this.refreshTokenRepository = refreshTokenRepository;
         this.userRepository = userRepository;
         this.expiration = expiration;
+        this.clock = clock;
     }
 
     /**
@@ -57,7 +63,7 @@ public class RefreshTokenService {
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(userRepository.getReferenceById(userId))
                 .tokenHash(Tokens.hash(token))
-                .expiresAt(Instant.now().plus(expiration))
+                .expiresAt(Instant.now(clock).plus(expiration))
                 .build();
 
         refreshTokenRepository.save(refreshToken);
@@ -88,7 +94,7 @@ public class RefreshTokenService {
             throw new RevokedTokenException("Token reuse detected, all sessions revoked!");
         }
 
-        if (refreshToken.getExpiresAt().isBefore(Instant.now()))
+        if (refreshToken.getExpiresAt().isBefore(Instant.now(clock)))
             throw new ExpiredRefreshTokenException("Refresh token expired!");
 
         return refreshToken;
