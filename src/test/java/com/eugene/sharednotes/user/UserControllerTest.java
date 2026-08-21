@@ -1,0 +1,275 @@
+package com.eugene.sharednotes.user;
+
+import com.eugene.sharednotes.auth.jwt.JwtService;
+import com.eugene.sharednotes.common.Role;
+import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
+import com.eugene.sharednotes.exceptions.UserNotFoundException;
+import com.eugene.sharednotes.exceptions.dto.ErrorCode;
+import com.eugene.sharednotes.security.SecurityConfig;
+import com.eugene.sharednotes.security.SecurityUser;
+import com.eugene.sharednotes.user.dto.UserResponse;
+import com.eugene.sharednotes.user.dto.UserUpdateRequest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(UserController.class)
+@Import(SecurityConfig.class)
+class UserControllerTest {
+
+    private static final Long USER_ID = 1L;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private UserService userService;
+
+    @MockitoBean
+    private JwtService jwtService;
+
+    @MockitoBean
+    private UserRepository userRepository;
+
+    private SecurityUser securityUser;
+
+    @BeforeEach
+    void setUp() {
+        UserEntity existingUser = UserEntity.builder()
+                .id(USER_ID)
+                .username("Bob")
+                .email("bob@mail.ru")
+                .build();
+
+        securityUser = new SecurityUser(existingUser);
+    }
+
+    @Nested
+    class GetCurrentUser {
+
+        @Test
+        void shouldReturn401_whenNotAuthenticated() throws Exception {
+            mockMvc.perform(get("/users/me"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void shouldReturnUserInfo_whenAuthenticated() throws Exception {
+
+            when(userService.findById(USER_ID))
+                    .thenReturn(new UserResponse(USER_ID, "Bob", "bob@mail.ru", Role.USER));
+
+            mockMvc.perform(get("/users/me").with(user(securityUser)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(1))
+                    .andExpect(jsonPath("$.username").value("Bob"))
+                    .andExpect(jsonPath("$.email").value("bob@mail.ru"))
+                    .andExpect(jsonPath("$.role").value("USER"))
+                    .andExpect(jsonPath("$.password").doesNotExist());
+        }
+
+        @Test
+        void shouldReturn404WithErrorResponse_whenUserDoesNotExist() throws Exception {
+
+            when(userService.findById(USER_ID))
+                    .thenThrow(new UserNotFoundException("User not found with id: " + USER_ID));
+
+            mockMvc.perform(get("/users/me").with(user(securityUser)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_NOT_FOUND.toString()))
+                    .andExpect(jsonPath("$.message").exists())
+                    .andExpect(jsonPath("$.timestamp").exists())
+                    .andExpect(jsonPath("$.errors").doesNotExist());
+        }
+    }
+
+    @Nested
+    class UpdateCurrentUser {
+
+        private static final String FULL_BODY = """
+                {
+                "username": "eugene",
+                "email": "eugene@mail.ru"
+                }
+                """;
+
+        private UserUpdateRequest request;
+
+        @BeforeEach
+        void setUp() {
+            request = new UserUpdateRequest("eugene", "eugene@mail.ru");
+        }
+
+        @Test
+        void shouldReturn401_whenNotAuthenticated() throws Exception {
+            mockMvc.perform(patch("/users/me"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void shouldUpdateUser_whenAuthenticatedAndValidRequest() throws Exception {
+            when(userService.updateUser(USER_ID, request))
+                    .thenReturn(new UserResponse(USER_ID, "eugene", "eugene@mail.ru", Role.USER));
+
+            mockMvc.perform(patch("/users/me")
+                            .with(user(securityUser))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(FULL_BODY)
+                    )
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(1))
+                    .andExpect(jsonPath("$.username").value("eugene"))
+                    .andExpect(jsonPath("$.email").value("eugene@mail.ru"))
+                    .andExpect(jsonPath("$.role").value("USER"))
+                    .andExpect(jsonPath("$.password").doesNotExist());
+        }
+
+        @Test
+        void shouldReturn409WithErrorResponse_whenUserAlreadyExists() throws Exception {
+            when(userService.updateUser(USER_ID, request))
+                    .thenThrow(new UserAlreadyExistsException("err message"));
+
+            mockMvc.perform(patch("/users/me")
+                            .with(user(securityUser))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(FULL_BODY)
+                    )
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_ALREADY_EXISTS.toString()))
+                    .andExpect(jsonPath("$.message").exists())
+                    .andExpect(jsonPath("$.timestamp").exists())
+                    .andExpect(jsonPath("$.errors").doesNotExist());
+
+        }
+
+        @Test
+        void shouldReturn404WithErrorResponse_whenUserDoesNotExist() throws Exception {
+            when(userService.updateUser(USER_ID, request))
+                    .thenThrow(new UserNotFoundException("err message"));
+
+            mockMvc.perform(patch("/users/me")
+                            .with(user(securityUser))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(FULL_BODY)
+                    )
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_NOT_FOUND.toString()))
+                    .andExpect(jsonPath("$.message").exists())
+                    .andExpect(jsonPath("$.timestamp").exists())
+                    .andExpect(jsonPath("$.errors").doesNotExist());
+        }
+
+        @Test
+        void shouldReturn400_whenEmailIsInvalid() throws Exception {
+            mockMvc.perform(patch("/users/me")
+                            .with(user(securityUser))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                    "email": "not-an-email"
+                                    }
+                                    """)
+                    )
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.message").exists())
+                    .andExpect(jsonPath("$.timestamp").exists())
+                    .andExpect(jsonPath("$.errors").isArray())
+                    .andExpect(jsonPath("$.errors[0].field").value("email"));
+
+            verifyNoInteractions(userService);
+        }
+
+        @Test
+        void shouldReturn400_whenUsernameIsInvalid() throws Exception {
+            mockMvc.perform(patch("/users/me")
+                            .with(user(securityUser))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                    "username": ""
+                                    }
+                                    """)
+                    )
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.message").exists())
+                    .andExpect(jsonPath("$.timestamp").exists())
+                    .andExpect(jsonPath("$.errors").isArray())
+                    .andExpect(jsonPath("$.errors[0].field").value("username"));
+
+            verifyNoInteractions(userService);
+        }
+
+        @Test
+        void shouldReturn400_whenNoFieldsProvided() throws Exception {
+            mockMvc.perform(patch("/users/me")
+                            .with(user(securityUser))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {}
+                                    """)
+                    )
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.message").exists())
+                    .andExpect(jsonPath("$.timestamp").exists())
+                    .andExpect(jsonPath("$.errors").isArray())
+                    .andExpect(jsonPath("$.errors[0].message").value("At least one field must be provided"));
+
+            verifyNoInteractions(userService);
+        }
+    }
+
+    @Nested
+    class DeleteCurrentUser {
+
+        @Test
+        void shouldReturn204_whenDeleteUser() throws Exception {
+            mockMvc.perform(delete("/users/me").with(user(securityUser)))
+                    .andExpect(status().isNoContent());
+
+            verify(userService).deleteUser(USER_ID);
+        }
+
+        @Test
+        void shouldReturn401_whenNotAuthenticated() throws Exception {
+            mockMvc.perform(delete("/users/me"))
+                    .andExpect(status().isUnauthorized());
+
+            verifyNoInteractions(userService);
+        }
+
+        @Test
+        void shouldReturn404WithErrorResponse_whenUserDoesNotExist() throws Exception {
+            doThrow(new UserNotFoundException("User not found with id: " + USER_ID))
+                    .when(userService).deleteUser(USER_ID);
+
+            mockMvc.perform(delete("/users/me").with(user(securityUser)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_NOT_FOUND.toString()))
+                    .andExpect(jsonPath("$.message").exists())
+                    .andExpect(jsonPath("$.timestamp").exists())
+                    .andExpect(jsonPath("$.errors").doesNotExist());
+        }
+
+    }
+}
