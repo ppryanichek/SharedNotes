@@ -67,7 +67,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidPasswordException.class)
     public ResponseEntity<ErrorResponse> handleInvalidPassword(InvalidPasswordException e) {
-        HttpStatus httpStatus = HttpStatus.UNAUTHORIZED;
+        HttpStatus httpStatus = HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(httpStatus)
                 .body(ErrorResponse.of(httpStatus.value(), ErrorCode.INVALID_PASSWORD, e.getMessage()));
     }
