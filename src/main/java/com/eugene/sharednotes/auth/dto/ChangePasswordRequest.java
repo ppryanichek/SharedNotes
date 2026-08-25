@@ -1,7 +1,7 @@
 package com.eugene.sharednotes.auth.dto;
 
+import com.eugene.sharednotes.common.validation.ValidPassword;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 
 public record ChangePasswordRequest(
 
@@ -9,10 +9,7 @@ public record ChangePasswordRequest(
         String oldPassword,
 
         @NotBlank
-        @Pattern(
-                regexp = "(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}",
-                message = "Password must me at least 8 characters and include lowercase, uppercase, and digit"
-        )
+        @ValidPassword
         String newPassword
 
 ) {}
