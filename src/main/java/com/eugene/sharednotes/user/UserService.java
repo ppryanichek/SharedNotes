@@ -15,14 +15,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 
 
 /**
  * Сервис управления пользователями: CRUD-операции над {@link UserEntity}
- * <p>
- * Все методы работают только с активными пользователями: мягко удалённые
+ * <p>Все методы работают только с активными пользователями: мягко удалённые
  * пользователи исключаются автоматически через {@link UserEntity} ({@code @SQLRestriction}).
+ * <p>Использует
  */
 @RequiredArgsConstructor
 @Service
@@ -30,6 +31,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
+    private final Clock clock;
 
     /**
      * Возвращает постраничный список всех пользователей.
@@ -77,13 +79,14 @@ public class UserService {
      * Проверяет существование пользователя по полям email и username.
      * <p>
      * Хеширует пароль перед сохранением в БД.
+     *
      * @param request валидированные поля для создания пользователя:
-     *                      <ul>
-     *                          <li>{@code username} имя пользователя,</li>
-     *                          <li>{@code password} пароль пользователя (в открытом виде),</li>
-     *                          <li>{@code email}    email пользователя,</li>
-     *                          <li>{@code role}     роль пользователя.</li>
-     *                      </ul>
+     *                <ul>
+     *                    <li>{@code username} имя пользователя,</li>
+     *                    <li>{@code password} пароль пользователя (в открытом виде),</li>
+     *                    <li>{@code email}    email пользователя,</li>
+     *                    <li>{@code role}     роль пользователя.</li>
+     *                </ul>
      * @return информацию о созданном пользователе (за исключением пароля).
      * @throws UserAlreadyExistsException если пользователь с данным email или username уже существует.
      */
@@ -165,6 +168,7 @@ public class UserService {
      * Ищет указанного пользователя в системе и устанавливает {@code deletedAt} на текущее время удаления.
      * <p>
      * Завершает все текущие сессии пользователя.
+     *
      * @throws UserNotFoundException если пользователь с данным id не найден.
      */
     @Transactional
@@ -172,7 +176,7 @@ public class UserService {
         UserEntity userEntity = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
 
-        userEntity.setDeletedAt(Instant.now());
+        userEntity.setDeletedAt(Instant.now(clock));
         refreshTokenService.revokeAll(id);
     }
 
