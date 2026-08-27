@@ -4,18 +4,53 @@ import com.eugene.sharednotes.exceptions.dto.ErrorCode;
 import com.eugene.sharednotes.exceptions.dto.ErrorResponse;
 import com.eugene.sharednotes.exceptions.dto.FieldError;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.List;
 
 @Slf4j
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(
+            Exception ex, Object body, HttpHeaders headers,
+            HttpStatusCode statusCode, WebRequest request) {
+
+        HttpStatus status = HttpStatus.valueOf(statusCode.value());
+        ErrorResponse error = ErrorResponse.of(status.value(), toErrorCode(status), ex.getMessage());
+
+        return new ResponseEntity<>(error, headers, status);
+    }
+
+    private ErrorCode toErrorCode(HttpStatus status) {
+        return status.is4xxClientError() ? ErrorCode.BAD_REQUEST : ErrorCode.INTERNAL_ERROR;
+    }
+
+    @Override
+    public ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException e, HttpHeaders headers,
+            HttpStatusCode statusCode, WebRequest request) {
+
+        List<FieldError> errors = e.getBindingResult().getFieldErrors()
+                .stream()
+                .map(fe -> new FieldError(fe.getField(), fe.getDefaultMessage()))
+                .toList();
+
+        ErrorResponse error = ErrorResponse.of(
+                HttpStatus.BAD_REQUEST.value(), ErrorCode.VALIDATION_FAILED, "Validation failed", errors);
+
+        return new ResponseEntity<>(error, headers, HttpStatus.BAD_REQUEST);
+    }
 
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException e) {
@@ -50,19 +85,6 @@ public class GlobalExceptionHandler {
         HttpStatus httpStatus = HttpStatus.UNAUTHORIZED;
         return ResponseEntity.status(httpStatus)
                 .body(ErrorResponse.of(httpStatus.value(), ErrorCode.BAD_CREDENTIALS, "Invalid email or password"));
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException e) {
-        HttpStatus httpStatus = HttpStatus.BAD_REQUEST;
-
-        List<FieldError> errors = e.getBindingResult().getFieldErrors()
-                .stream()
-                .map(fe -> new FieldError(fe.getField(), fe.getDefaultMessage()))
-                .toList();
-
-        return ResponseEntity.status(httpStatus)
-                .body(ErrorResponse.of(httpStatus.value(), ErrorCode.VALIDATION_FAILED , "Validation failed", errors));
     }
 
     @ExceptionHandler(InvalidPasswordException.class)
