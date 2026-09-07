@@ -1,0 +1,6 @@
+jwt:
+  secret: dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0cy1vbmx5LTMyLWJ5dGVz
+  access:
+    expiration: 15m
+  refresh:
+    expiration: 7d
