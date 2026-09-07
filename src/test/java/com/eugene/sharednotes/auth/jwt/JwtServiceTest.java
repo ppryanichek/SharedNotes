@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p>Время фиксируется через {@link Clock}, поэтому проверки срока жизни токена
  * детерминированы и не зависят от даты запуска.
  */
-public class JwtServiceTest {
+class JwtServiceTest {
 
     private static final String SECRET = Base64.getEncoder()
             .encodeToString(Jwts.SIG.HS256.key().build().getEncoded());

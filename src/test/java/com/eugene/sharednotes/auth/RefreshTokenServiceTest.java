@@ -33,7 +33,7 @@ import static org.mockito.Mockito.when;
  * {@code TOKEN_HASH} вычисляется по-настоящему.
  */
 @ExtendWith(MockitoExtension.class)
-public class RefreshTokenServiceTest {
+class RefreshTokenServiceTest {
 
     private static final String RAW_TOKEN = "raw-token";
 
