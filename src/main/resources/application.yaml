@@ -35,3 +35,6 @@ admin:
   username: ${ADMIN_USERNAME:}
   email: ${ADMIN_EMAIL:}
   password: ${ADMIN_PASSWORD:}
+
+account:
+  retention-period: ${ACCOUNT_RETENTION_PERIOD:30d}

@@ -3,19 +3,22 @@ package com.eugene.sharednotes.user;
 import com.eugene.sharednotes.auth.RefreshTokenService;
 import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.exceptions.InvalidPasswordException;
+import com.eugene.sharednotes.exceptions.RestoreWindowExpiredException;
 import com.eugene.sharednotes.user.dto.CreateUserRequest;
 import com.eugene.sharednotes.user.dto.UserResponse;
 import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
 import com.eugene.sharednotes.exceptions.UserNotFoundException;
 import com.eugene.sharednotes.user.dto.UserUpdateRequest;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 
 
@@ -23,15 +26,29 @@ import java.time.Instant;
  * Сервис управления пользователями: CRUD-операции над {@link UserEntity}
  * <p>Все методы работают только с активными пользователями: мягко удалённые
  * пользователи исключаются автоматически через {@link UserEntity} ({@code @SQLRestriction}).
- * <p>Использует
+ * <p>Использует {@link Clock} для проверки истечения окна восстановления пользователя.
  */
-@RequiredArgsConstructor
 @Service
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
+    private final Duration retentionPeriod;
     private final Clock clock;
+
+    public UserService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            RefreshTokenService refreshTokenService,
+            @Value("${account.retention-period}") Duration retentionPeriod,
+            Clock clock) {
+
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.refreshTokenService = refreshTokenService;
+        this.retentionPeriod = retentionPeriod;
+        this.clock = clock;
+    }
 
     /**
      * Возвращает постраничный список всех пользователей.
@@ -178,6 +195,33 @@ public class UserService {
 
         userEntity.setDeletedAt(Instant.now(clock));
         refreshTokenService.revokeAll(id);
+    }
+
+    /**
+     * Снимает метку удаления с soft-deleted пользователя,
+     * если окно восстановления ещё активно.
+     * <p>Поиск идёт нативным запросом для обхода {@code @SQLRestriction}.
+     *
+     * @return id пользователя.
+     * @throws UserNotFoundException если удалённого пользователь с данным email не существует.
+     * @throws BadCredentialsException если пароль неверный.
+     * @throws RestoreWindowExpiredException если окно восстановления истекло.
+     */
+    @Transactional
+    public Long restore(String email, String password) {
+        UserEntity userEntity = userRepository.findSoftDeletedByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+
+        if (!passwordEncoder.matches(password, userEntity.getPassword()))
+            throw new BadCredentialsException("Invalid email or password");
+
+        Instant cutoff = Instant.now(clock).minus(retentionPeriod);
+        if (userEntity.getDeletedAt().isBefore(cutoff))
+            throw new RestoreWindowExpiredException("Account restoration period has expired");
+
+        userEntity.setDeletedAt(null);
+
+        return userEntity.getId();
     }
 
     public boolean adminExists() {

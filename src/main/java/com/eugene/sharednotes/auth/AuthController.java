@@ -46,4 +46,9 @@ public class AuthController {
                                @Valid @RequestBody ChangePasswordRequest request) {
         return authService.changePassword(principal.getUserId(), request);
     }
+
+    @PostMapping("/restore")
+    public TokenPairResponse restore(@Valid @RequestBody LoginRequest request) {
+        return authService.restore(request);
+    }
 }

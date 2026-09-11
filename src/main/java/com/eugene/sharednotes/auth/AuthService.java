@@ -18,14 +18,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Сервис управления сессией пользователя.
- * <p>
- * Предоставляет такие методы как:
+ * <p>Предоставляет такие методы как:
  *                      <ul>
  *                          <li>{@code register}    регистрация пользователя,</li>
  *                          <li>{@code login}       аутентификация пользователя,</li>
  *                          <li>{@code logout}      закрытие текущей сессии,</li>
  *                          <li>{@code logoutAll}   закрытие всех сессий пользователя,</li>
  *                          <li>{@code refresh}     выдача новых токенов.</li>
+ *                          <li>{@code restore}     восстановление аккаунта.</li>
  *                      </ul>
  */
 
@@ -49,6 +49,7 @@ public class AuthService {
      *                          <li>{@code password} пароль пользователя (в открытом виде),</li>
      *                          <li>{@code email}    email пользователя.</li>
      *                      </ul>
+     *
      * @return {@link TokenPairResponse} новую пару (refresh и access) токенов
      * созданных через {@link #issueTokens(Long)}.
      * @throws UserAlreadyExistsException если пользователь с данным email или username уже существует.
@@ -135,6 +136,27 @@ public class AuthService {
         RotationResult result = refreshTokenService.rotate(refreshToken);
         GeneratedAccessToken access = jwtService.generateAccessToken(result.userId());
         return new TokenPairResponse(access.token(), result.rawRefreshToken());
+    }
+
+    /**
+     * Восстанавливает аккаунт soft-deleted пользователя,
+     * если окно восстановления ещё не истекло, и открывает новую сессию.
+     *
+     * @param request поля для восстановления пользователя:
+     *                      <ul>
+     *                          <li>{@code email}    email пользователя,</li>
+     *                          <li>{@code password} пароль пользователя (в открытом виде),</li>
+     *                      </ul>
+     *
+     * @return {@link TokenPairResponse} новую пару (refresh и access) токенов
+     * созданных через {@link #issueTokens(Long)}.
+     *
+     * @throws UserNotFoundException            если пользователя с данным email не найден.
+     * @throws BadCredentialsException          если пароль неверный.
+     * @throws RestoreWindowExpiredException    если срок восстановления истёк.
+     */
+    public TokenPairResponse restore(LoginRequest request) {
+        return issueTokens(userService.restore(request.email(), request.password()));
     }
 
     /**

@@ -14,5 +14,7 @@ public enum ErrorCode {
 
     RESOURCE_NOT_FOUND,
     INTERNAL_ERROR,
-    BAD_REQUEST
+    BAD_REQUEST,
+
+    RESTORE_WINDOW_EXPIRED
 }

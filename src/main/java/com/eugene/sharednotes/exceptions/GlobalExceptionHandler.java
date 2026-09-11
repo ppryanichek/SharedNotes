@@ -94,6 +94,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ErrorResponse.of(httpStatus.value(), ErrorCode.INVALID_PASSWORD, e.getMessage()));
     }
 
+    @ExceptionHandler(RestoreWindowExpiredException.class)
+    public ResponseEntity<ErrorResponse> handleRestoreWindowExpired(RestoreWindowExpiredException e) {
+        HttpStatus httpStatus = HttpStatus.GONE;
+        return ResponseEntity.status(httpStatus)
+                .body(ErrorResponse.of(httpStatus.value(), ErrorCode.RESTORE_WINDOW_EXPIRED, e.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception e) {
         log.error("Unhandled exception", e);
@@ -101,4 +108,5 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return  ResponseEntity.status(httpStatus)
                 .body(ErrorResponse.of(httpStatus.value(), ErrorCode.INTERNAL_ERROR, "Internal server error"));
     }
+
 }
