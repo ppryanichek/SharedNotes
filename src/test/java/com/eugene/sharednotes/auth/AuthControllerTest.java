@@ -7,6 +7,7 @@ import com.eugene.sharednotes.auth.dto.TokenPairResponse;
 import com.eugene.sharednotes.auth.jwt.JwtService;
 import com.eugene.sharednotes.exceptions.ExpiredRefreshTokenException;
 import com.eugene.sharednotes.exceptions.InvalidPasswordException;
+import com.eugene.sharednotes.exceptions.RestoreWindowExpiredException;
 import com.eugene.sharednotes.exceptions.RevokedTokenException;
 import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
 import com.eugene.sharednotes.exceptions.dto.ErrorCode;
@@ -14,6 +15,7 @@ import com.eugene.sharednotes.security.SecurityConfig;
 import com.eugene.sharednotes.security.SecurityUser;
 import com.eugene.sharednotes.user.UserEntity;
 import com.eugene.sharednotes.user.UserRepository;
+import com.eugene.sharednotes.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -433,6 +435,46 @@ class AuthControllerTest {
                     .andExpect(jsonPath("$.errors[0].message").exists());
 
             verifyNoInteractions(authService);
+        }
+    }
+
+    @Nested
+    class Restore {
+
+        private static MockHttpServletRequestBuilder restoreRequest(String email, String password) {
+            return post("/auth/restore")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                            {
+                            "email": "%s",
+                            "password": "%s"
+                            }
+                            """.formatted(email, password));
+        }
+
+        @Test
+        void shouldReturn410_whenRetentionPeriodExpired() throws Exception {
+
+            when(authService.restore(new LoginRequest("bob@mail.ru", "Password1@")))
+                    .thenThrow(new RestoreWindowExpiredException("error message"));
+
+            mockMvc.perform(restoreRequest("bob@mail.ru", "Password1@"))
+                    .andExpect(status().isGone())
+                    .andExpect(jsonPath("$.code").value(ErrorCode.RESTORE_WINDOW_EXPIRED.toString()))
+                    .andExpect(jsonPath("$.message").exists())
+                    .andExpect(jsonPath("$.timestamp").exists())
+                    .andExpect(jsonPath("$.errors").doesNotExist());
+        }
+
+        @Test
+        void shouldIssueTokens_whenRestorationSucceeds() throws Exception {
+            when(authService.restore(new LoginRequest("bob@mail.ru", "Password1@")))
+                    .thenReturn(new TokenPairResponse("ACCESS", "REFRESH"));
+
+            mockMvc.perform(restoreRequest("bob@mail.ru", "Password1@"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.accessToken").value("ACCESS"))
+                    .andExpect(jsonPath("$.refreshToken").value("REFRESH"));
         }
     }
 }

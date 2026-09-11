@@ -3,6 +3,7 @@ package com.eugene.sharednotes.user;
 import com.eugene.sharednotes.auth.RefreshTokenService;
 import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.exceptions.InvalidPasswordException;
+import com.eugene.sharednotes.exceptions.RestoreWindowExpiredException;
 import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
 import com.eugene.sharednotes.exceptions.UserNotFoundException;
 import com.eugene.sharednotes.user.dto.CreateUserRequest;
@@ -18,12 +19,14 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -39,6 +42,7 @@ class UserServiceTest {
 
     private static final Instant FIXED_NOW = Instant.parse("2026-01-01T12:00:00Z");
     private static final Clock FIXED_CLOCK = Clock.fixed(FIXED_NOW, ZoneOffset.UTC);
+    private static final Duration RETENTION_PERIOD = Duration.ofDays(30);
 
     @Mock
     private UserRepository userRepository;
@@ -56,13 +60,13 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
 
-        userService = new UserService(userRepository, passwordEncoder, refreshTokenService, FIXED_CLOCK);
+        userService = new UserService(userRepository, passwordEncoder, refreshTokenService, RETENTION_PERIOD, FIXED_CLOCK);
 
         existingUser = UserEntity.builder()
                 .id(1L)
                 .username("eugene")
                 .email("eugene@mail.ru")
-                .password("hashed-1234Qwer@")
+                .password("hash")
                 .build();
     }
 
@@ -309,18 +313,18 @@ class UserServiceTest {
         @Test
         void shouldThrowInvalidPasswordException_whenOldPasswordInvalid() {
             when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-            when(passwordEncoder.matches("wrongPass", "hashed-1234Qwer@")).thenReturn(false);
+            when(passwordEncoder.matches("wrongPass", "hash")).thenReturn(false);
 
             assertThatThrownBy(() -> userService.changePassword(1L, "wrongPass", "newPass"))
                     .isInstanceOf(InvalidPasswordException.class);
 
-            assertThat(existingUser.getPassword()).isEqualTo("hashed-1234Qwer@");
+            assertThat(existingUser.getPassword()).isEqualTo("hash");
         }
 
         @Test
         void shouldChangePassword_whenDataIsValid() {
             when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-            when(passwordEncoder.matches("1234Qwer@", "hashed-1234Qwer@")).thenReturn(true);
+            when(passwordEncoder.matches("1234Qwer@", "hash")).thenReturn(true);
             when(passwordEncoder.encode("newPass")).thenReturn("newPass-hash");
 
             userService.changePassword(1L, "1234Qwer@", "newPass");
@@ -354,6 +358,64 @@ class UserServiceTest {
             verify(refreshTokenService).revokeAll(userId);
         }
 
+    }
+
+    @Nested
+    class Restore {
+
+        @Test
+        void shouldThrowUserNotFoundException_whenSoftDeletedUserDoesNotExist() {
+           when(userRepository.findSoftDeletedByEmail("eugene@mail.ru")).thenReturn(Optional.empty());
+
+           assertThatThrownBy(() -> userService.restore("eugene@mail.ru", "Password1@"))
+                   .isInstanceOf(UserNotFoundException.class);
+        }
+
+        @Test
+        void shouldThrowBadCredentialsException_whenPasswordIsInvalid() {
+            when(userRepository.findSoftDeletedByEmail("eugene@mail.ru")).thenReturn(Optional.of(existingUser));
+            when(passwordEncoder.matches("wrongPass", "hash")).thenReturn(false);
+
+            assertThatThrownBy(() -> userService.restore("eugene@mail.ru", "wrongPass"))
+                    .isInstanceOf(BadCredentialsException.class);
+        }
+
+        @Test
+        void shouldThrowRestorationWindowExpiredException_whenRestorationWindowExpired() {
+            existingUser.setDeletedAt(FIXED_NOW.minus(Duration.ofDays(31)));
+
+            when(userRepository.findSoftDeletedByEmail("eugene@mail.ru")).thenReturn(Optional.of(existingUser));
+            when(passwordEncoder.matches("pass", "hash")).thenReturn(true);
+
+            assertThatThrownBy(() -> userService.restore("eugene@mail.ru", "pass"))
+                    .isInstanceOf(RestoreWindowExpiredException.class);
+        }
+
+        @Test
+        void shouldRestore_whenDeletedAtExactlyAtRetentionBoundary() {
+            existingUser.setDeletedAt(FIXED_NOW.minus(RETENTION_PERIOD));
+
+            when(userRepository.findSoftDeletedByEmail("eugene@mail.ru")).thenReturn(Optional.of(existingUser));
+            when(passwordEncoder.matches("pass", "hash")).thenReturn(true);
+
+            userService.restore("eugene@mail.ru", "pass");
+
+            assertThat(existingUser.getDeletedAt()).isNull();
+        }
+
+        @Test
+        void shouldSetDeletedAtToNull_whenRestorationSucceeds() {
+            existingUser.setDeletedAt(FIXED_NOW.minus(Duration.ofDays(29)));
+
+            when(userRepository.findSoftDeletedByEmail("eugene@mail.ru")).thenReturn(Optional.of(existingUser));
+            when(passwordEncoder.matches("pass", "hash")).thenReturn(true);
+
+            Long userId = userService.restore("eugene@mail.ru", "pass");
+
+            assertThat(existingUser.getDeletedAt()).isNull();
+            assertThat(userId).isEqualTo(1L);
+
+        }
     }
 
     @Test

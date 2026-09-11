@@ -25,6 +25,8 @@ import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -169,6 +171,33 @@ class AuthServiceTest {
         @Test
         void shouldIssueNewTokens_whenPasswordChanged() {
             TokenPairResponse response = authService.changePassword(USER_ID, request);
+
+            assertThat(response.accessToken()).isEqualTo("ACCESS");
+            assertThat(response.refreshToken()).isEqualTo("NEW-REFRESH");
+        }
+    }
+
+    @Nested
+    class Restore {
+
+        private LoginRequest request;
+
+        @BeforeEach
+        void setUp() {
+            when(jwtService.generateAccessToken(USER_ID))
+                    .thenReturn(new GeneratedAccessToken("ACCESS", FIXED_NOW.plus(Duration.ofMinutes(15))));
+            when(refreshTokenService.create(USER_ID))
+                    .thenReturn("NEW-REFRESH");
+
+            request = new LoginRequest("bob@mail.ru", "Password1@");
+
+        }
+
+        @Test
+        void shouldIssueNewTokens_whenRestorationSucceeds() {
+            when(userService.restore("bob@mail.ru", "Password1@")).thenReturn(USER_ID);
+
+            TokenPairResponse response = authService.restore(request);
 
             assertThat(response.accessToken()).isEqualTo("ACCESS");
             assertThat(response.refreshToken()).isEqualTo("NEW-REFRESH");

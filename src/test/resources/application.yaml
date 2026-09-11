@@ -4,3 +4,6 @@ jwt:
     expiration: 15m
   refresh:
     expiration: 7d
+
+account:
+  retention-period: ${ACCOUNT_RETENTION_PERIOD:30d}

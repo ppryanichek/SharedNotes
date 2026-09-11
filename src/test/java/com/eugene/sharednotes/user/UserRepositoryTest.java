@@ -9,10 +9,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 
+import java.time.Duration;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class UserRepositoryTest extends RepositoryTestBase {
@@ -81,46 +81,114 @@ class UserRepositoryTest extends RepositoryTestBase {
         void shouldNotInclude_inFindAll() {
             assertThat(userRepository.findAll()).isEmpty();
         }
+
+        @Test
+        void shouldNotAllowDuplicateEmail() {
+            assertThatThrownBy(() -> persist(user("Eugene", "bob@mail.ru", null)))
+                    .isInstanceOf(ConstraintViolationException.class);
+        }
+
+        @Test
+        void shouldNotAllowDuplicateUsername() {
+            assertThatThrownBy(() -> persist(user("Bob", "eugene@mail.ru", null)))
+                    .isInstanceOf(ConstraintViolationException.class);
+        }
     }
 
-    @Test
-    void shouldFindActiveUser() {
-        persist(user("Bob", "bob@mail.ru", null));
 
-        assertThat(userRepository.findByEmail("bob@mail.ru")).isPresent();
+    @Nested
+    class ActiveUser {
+
+        @BeforeEach
+        void setUp() {
+            persist(user("Bob", "bob@mail.ru", null));
+        }
+
+        @Test
+        void shouldFindActiveUser() {
+            assertThat(userRepository.findByEmail("bob@mail.ru")).isPresent();
+        }
+
+        @Test
+        void shouldRejectDuplicateEmail_whenBothUsersAreActive() {
+            assertThatThrownBy(() -> persist(user("Eugene", "bob@mail.ru", null)))
+                    .isInstanceOf(ConstraintViolationException.class)
+                    .hasMessageContaining("email");
+        }
+
+        @Test
+        void shouldRejectDuplicateUsername_whenBothUsersAreActive() {
+            assertThatThrownBy(() -> persist(user("Bob", "eugene@mail.ru", null)))
+                    .isInstanceOf(ConstraintViolationException.class)
+                    .hasMessageContaining("username");
+        }
     }
 
-    @Test
-    void shouldRejectDuplicateEmail_whenBothUsersAreActive() {
-        persist(user("Bob", "bob@mail.ru", null));
+    @Nested
+    class FindSoftDeletedByEmail {
 
-        assertThatThrownBy(() -> persist(user("Eugene", "bob@mail.ru", null)))
-                .isInstanceOf(ConstraintViolationException.class)
-                .hasMessageContaining("email");
+        @Test
+        void shouldReturnNothing_whenDBIsEmpty() {
+            assertThat(userRepository.findSoftDeletedByEmail("bob@mail.ru")).isEmpty();
+        }
+
+        @Test
+        void shouldReturnNothing_whenUserIsActive() {
+            persist(user("Bob", "bob@mail.ru", null));
+
+            assertThat(userRepository.findSoftDeletedByEmail("bob@mail.ru")).isEmpty();
+        }
+
+        @Test
+        void shouldReturnUser_whenUserIsSoftDeleted() {
+            UserEntity user = persist(user("Bob", "bob@mail.ru", FIXED_NOW));
+
+            Long userId = user.getId();
+
+            assertThat(userRepository.findSoftDeletedByEmail("bob@mail.ru"))
+                    .get()
+                    .extracting(UserEntity::getId)
+                    .isEqualTo(userId);
+        }
     }
 
-    @Test
-    void shouldRejectDuplicateUsername_whenBothUsersAreActive() {
-        persist(user("Bob", "bob@mail.ru", null));
+    @Nested
+    class DeleteSoftDeletedBefore {
 
-        assertThatThrownBy(() -> persist(user("Bob", "eugene@mail.ru", null)))
-                .isInstanceOf(ConstraintViolationException.class)
-                .hasMessageContaining("username");
-    }
+        Instant cutoff = FIXED_NOW.minus(Duration.ofDays(30));
 
-    @Test
-    void shouldAllowDuplicateEmail_whenOneUserIsSoftDeleted() {
-        persist(user("Bob", "bob@mail.ru", FIXED_NOW));
+        public Long countByEmail(String email) {
+            return (Long) entityManager.getEntityManager()
+                    .createNativeQuery("SELECT COUNT(*) FROM users WHERE email = :email")
+                    .setParameter("email", email)
+                    .getSingleResult();
+        }
 
-        assertThatNoException()
-                .isThrownBy(() -> persist(user("Eugene", "bob@mail.ru", null)));
-    }
+        @Test
+        void shouldCleanup_whenRetentionPeriodExpired() {
+            persist(user("Bob", "bob@mail.ru", FIXED_NOW.minus(Duration.ofDays(31))));
 
-    @Test
-    void shouldAllowDuplicateUsername_whenOneUserIsSoftDeleted() {
-        persist(user("Bob", "bob@mail.ru", FIXED_NOW));
+            userRepository.deleteSoftDeletedBefore(cutoff);
 
-        assertThatNoException()
-                .isThrownBy(() -> persist(user("Bob", "eugene@mail.ru", null)));
+            assertThat(countByEmail("bob@mail.ru")).isEqualTo(0L);
+        }
+
+        @Test
+        void shouldNotCleanup_whenDeletedAtExactlyAtCutoff() {
+            persist(user("Bob", "bob@mail.ru", FIXED_NOW.minus(Duration.ofDays(30))));
+
+            userRepository.deleteSoftDeletedBefore(cutoff);
+
+            assertThat(countByEmail("bob@mail.ru")).isEqualTo(1L);
+        }
+
+        @Test
+        void shouldNotCleanup_whenRetentionPeriodActive() {
+            persist(user("Bob", "bob@mail.ru", FIXED_NOW.minus(Duration.ofDays(29))));
+
+            userRepository.deleteSoftDeletedBefore(cutoff);
+
+            assertThat(countByEmail("bob@mail.ru")).isEqualTo(1L);
+        }
     }
 }
