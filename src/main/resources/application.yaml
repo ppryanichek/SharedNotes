@@ -6,7 +6,7 @@ spring:
     name: SharedNotes
   # DB
   datasource:
-    url: jdbc:postgresql://db:5432/shared_notes
+    url: jdbc:postgresql://db:5432/${DB_NAME}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
