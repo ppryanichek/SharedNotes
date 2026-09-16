@@ -1,31 +1,25 @@
 package com.eugene.sharednotes.auth;
 
+import com.eugene.sharednotes.ControllerTestBase;
 import com.eugene.sharednotes.auth.dto.ChangePasswordRequest;
 import com.eugene.sharednotes.auth.dto.LoginRequest;
 import com.eugene.sharednotes.auth.dto.RegisterRequest;
 import com.eugene.sharednotes.auth.dto.TokenPairResponse;
-import com.eugene.sharednotes.auth.jwt.JwtService;
 import com.eugene.sharednotes.exceptions.ExpiredRefreshTokenException;
 import com.eugene.sharednotes.exceptions.InvalidPasswordException;
 import com.eugene.sharednotes.exceptions.RestoreWindowExpiredException;
 import com.eugene.sharednotes.exceptions.RevokedTokenException;
 import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
 import com.eugene.sharednotes.exceptions.dto.ErrorCode;
-import com.eugene.sharednotes.security.SecurityConfig;
 import com.eugene.sharednotes.security.SecurityUser;
 import com.eugene.sharednotes.user.UserEntity;
-import com.eugene.sharednotes.user.UserRepository;
-import com.eugene.sharednotes.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import static org.hamcrest.Matchers.hasItems;
@@ -39,22 +33,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
-@Import(SecurityConfig.class)
-class AuthControllerTest {
+class AuthControllerTest extends ControllerTestBase {
 
     private static final Long USER_ID = 1L;
 
-    @Autowired
-    private MockMvc mockMvc;
-
     @MockitoBean
     private AuthService authService;
-
-    @MockitoBean
-    private JwtService jwtService;
-
-    @MockitoBean
-    private UserRepository userRepository;
 
     private SecurityUser securityUser;
 

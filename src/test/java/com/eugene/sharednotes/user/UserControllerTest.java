@@ -1,23 +1,19 @@
 package com.eugene.sharednotes.user;
 
-import com.eugene.sharednotes.auth.jwt.JwtService;
+import com.eugene.sharednotes.ControllerTestBase;
 import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
 import com.eugene.sharednotes.exceptions.UserNotFoundException;
 import com.eugene.sharednotes.exceptions.dto.ErrorCode;
-import com.eugene.sharednotes.security.SecurityConfig;
 import com.eugene.sharednotes.security.SecurityUser;
 import com.eugene.sharednotes.user.dto.UserResponse;
 import com.eugene.sharednotes.user.dto.UserUpdateRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -31,22 +27,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(UserController.class)
-@Import(SecurityConfig.class)
-class UserControllerTest {
+class UserControllerTest extends ControllerTestBase {
 
     private static final Long USER_ID = 1L;
 
-    @Autowired
-    private MockMvc mockMvc;
-
     @MockitoBean
     private UserService userService;
-
-    @MockitoBean
-    private JwtService jwtService;
-
-    @MockitoBean
-    private UserRepository userRepository;
 
     private SecurityUser securityUser;
 
@@ -111,12 +97,7 @@ class UserControllerTest {
                 }
                 """;
 
-        private UserUpdateRequest request;
-
-        @BeforeEach
-        void setUp() {
-            request = new UserUpdateRequest("eugene", "eugene@mail.ru");
-        }
+        private static final UserUpdateRequest REQUEST = new UserUpdateRequest("eugene", "eugene@mail.ru");
 
         @Test
         void shouldReturn401_whenNotAuthenticated() throws Exception {
@@ -126,7 +107,7 @@ class UserControllerTest {
 
         @Test
         void shouldUpdateUser_whenAuthenticatedAndValidRequest() throws Exception {
-            when(userService.updateUser(USER_ID, request))
+            when(userService.updateUser(USER_ID, REQUEST))
                     .thenReturn(new UserResponse(USER_ID, "eugene", "eugene@mail.ru", Role.USER));
 
             mockMvc.perform(patch("/users/me")
@@ -144,7 +125,7 @@ class UserControllerTest {
 
         @Test
         void shouldReturn409WithErrorResponse_whenUserAlreadyExists() throws Exception {
-            when(userService.updateUser(USER_ID, request))
+            when(userService.updateUser(USER_ID, REQUEST))
                     .thenThrow(new UserAlreadyExistsException("err message"));
 
             mockMvc.perform(patch("/users/me")
@@ -162,7 +143,7 @@ class UserControllerTest {
 
         @Test
         void shouldReturn404WithErrorResponse_whenUserDoesNotExist() throws Exception {
-            when(userService.updateUser(USER_ID, request))
+            when(userService.updateUser(USER_ID, REQUEST))
                     .thenThrow(new UserNotFoundException("err message"));
 
             mockMvc.perform(patch("/users/me")

@@ -1,12 +1,11 @@
 package com.eugene.sharednotes.user;
 
 
-import com.eugene.sharednotes.auth.jwt.JwtService;
+import com.eugene.sharednotes.ControllerTestBase;
 import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
 import com.eugene.sharednotes.exceptions.UserNotFoundException;
 import com.eugene.sharednotes.exceptions.dto.ErrorCode;
-import com.eugene.sharednotes.security.SecurityConfig;
 import com.eugene.sharednotes.security.SecurityUser;
 import com.eugene.sharednotes.user.dto.CreateUserRequest;
 import com.eugene.sharednotes.user.dto.UserResponse;
@@ -14,14 +13,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.util.List;
@@ -43,21 +39,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AdminUserController.class)
-@Import(SecurityConfig.class)
-class AdminUserControllerTest {
+class AdminUserControllerTest extends ControllerTestBase {
     private static final Long USER_ID = 1L;
-
-    @Autowired
-    private MockMvc mockMvc;
 
     @MockitoBean
     private UserService userService;
-
-    @MockitoBean
-    private JwtService jwtService;
-
-    @MockitoBean
-    private UserRepository userRepository;
 
     private SecurityUser securityUser;
 
