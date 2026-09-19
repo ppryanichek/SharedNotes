@@ -59,17 +59,21 @@ public class JwtService {
     }
 
     /**
-     * Извлекает username (subject) из токена
+     * Извлекает userId (subject) из токена
      *
      * @throws JwtException если токен невалиден, просрочен или повреждён.
+     * @throws MalformedJwtException если subject отсутствует или не парсится в число.
      */
     public Long extractUserId(String accessToken) {
         String subject = extractAllClaims(accessToken).getSubject();
 
+        if (subject == null)
+            throw new MalformedJwtException("Subject is missing");
+
         try {
             return Long.valueOf(subject);
         } catch (NumberFormatException e) {
-            throw new MalformedJwtException("Subject не является корректным userId: " + subject, e);
+            throw new MalformedJwtException("Subject is not correct userId: " + subject, e);
         }
     }
 
