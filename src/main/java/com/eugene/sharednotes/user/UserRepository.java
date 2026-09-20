@@ -23,6 +23,9 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     boolean existsByRole(Role role);
 
+    @Query("SELECT u.role FROM UserEntity u WHERE u.id = :id")
+    Optional<Role> findRoleById(@Param("id") Long id);
+
     /** Нативный запрос, чтобы обойти {@code @SQLRestriction} на UserEntity. */
     @Modifying
     @Query(value = "DELETE FROM users WHERE deleted_at < :cutoff", nativeQuery = true)
