@@ -2,6 +2,7 @@ package com.eugene.sharednotes.security;
 
 import com.eugene.sharednotes.auth.jwt.JwtService;
 import com.eugene.sharednotes.common.Role;
+import com.eugene.sharednotes.exceptions.dto.ErrorCode;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -10,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -26,7 +28,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
-
+    private final SecurityResponseWriter responseWriter;
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -69,17 +71,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(passwordAuthenticationToken);
         } catch (ExpiredJwtException e) {
             log.warn("Expired JWT token: {}", e.getMessage());
-            SecurityResponseWriter.writeErrorResponse(
+            responseWriter.writeErrorResponse(
                     response,
                     HttpServletResponse.SC_UNAUTHORIZED,
+                    ErrorCode.TOKEN_EXPIRED,
                     "Token expired!"
             );
             return;
         } catch (JwtException e) {
             log.error("JWT authentication failed", e);
-            SecurityResponseWriter.writeErrorResponse(
+            responseWriter.writeErrorResponse(
                     response,
                     HttpServletResponse.SC_UNAUTHORIZED,
+                    ErrorCode.UNAUTHORIZED,
                     "Invalid token!"
             );
             return;

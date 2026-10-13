@@ -1,7 +1,7 @@
 package com.eugene.sharednotes.security;
 
+import com.eugene.sharednotes.exceptions.dto.ErrorCode;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -18,7 +18,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @EnableMethodSecurity
 @EnableWebSecurity
-@RequiredArgsConstructor
 @Configuration
 public class SecurityConfig {
 
@@ -31,7 +30,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity, JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity,
+                                                   JwtAuthenticationFilter jwtAuthenticationFilter,
+                                                   SecurityResponseWriter responseWriter) {
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -48,16 +49,18 @@ public class SecurityConfig {
                 )
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((request, response, authException) -> {
-                            SecurityResponseWriter.writeErrorResponse(
+                            responseWriter.writeErrorResponse(
                                     response,
                                     HttpServletResponse.SC_UNAUTHORIZED,
+                                    ErrorCode.UNAUTHORIZED,
                                     "Unauthorized"
                             );
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            SecurityResponseWriter.writeErrorResponse(
+                            responseWriter.writeErrorResponse(
                                     response,
                                     HttpServletResponse.SC_FORBIDDEN,
+                                    ErrorCode.ACCESS_DENIED,
                                     "Access denied"
                             );
                         })

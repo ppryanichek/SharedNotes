@@ -1,19 +1,27 @@
 package com.eugene.sharednotes.security;
 
+import com.eugene.sharednotes.exceptions.dto.ErrorCode;
+import com.eugene.sharednotes.exceptions.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 
-public final class SecurityResponseWriter {
-    private SecurityResponseWriter() {}
+@RequiredArgsConstructor
+@Component
+public class SecurityResponseWriter {
+    private final JsonMapper jsonMapper;
 
-    public static void writeErrorResponse(HttpServletResponse response,
+    public void writeErrorResponse(HttpServletResponse response,
                                     int status,
-                                    String message) throws IOException {
+                                   ErrorCode errorCode,
+                                   String message) throws IOException {
+
         response.setStatus(status);
         response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write("""
-                {"message": "%s"}
-                """.formatted(message));
+        ErrorResponse errorResponse = ErrorResponse.of(status, errorCode, message);
+        jsonMapper.writeValue(response.getOutputStream(), errorResponse);
     }
 }

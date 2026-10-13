@@ -4,6 +4,7 @@ import com.eugene.sharednotes.auth.jwt.JwtService;
 import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.security.JwtPrincipal;
 import com.eugene.sharednotes.security.SecurityConfig;
+import com.eugene.sharednotes.security.SecurityResponseWriter;
 import com.eugene.sharednotes.user.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -19,7 +20,8 @@ import java.util.List;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 
 @WebMvcTest
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class,
+        SecurityResponseWriter.class})
 public abstract class ControllerTestBase {
 
     @Autowired
@@ -27,9 +29,6 @@ public abstract class ControllerTestBase {
 
     @MockitoBean
     protected JwtService jwtService;
-
-    @MockitoBean
-    protected UserRepository userRepository;
 
     protected static RequestPostProcessor authAs(Long userId, Role role) {
         return authentication(new UsernamePasswordAuthenticationToken(

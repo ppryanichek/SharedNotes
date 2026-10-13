@@ -109,6 +109,7 @@ class AdminUserControllerTest extends ControllerTestBase {
                     .andExpect(jsonPath("$.code").value(ErrorCode.ACCESS_DENIED.toString()));
 
             verifyNoInteractions(userService);
+            verify(roleChecker).isStillAdmin(any(Authentication.class));
         }
     }
 
