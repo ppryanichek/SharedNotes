@@ -1,15 +1,13 @@
 package com.eugene.sharednotes.auth.jwt;
 
 import com.eugene.sharednotes.auth.dto.GeneratedAccessToken;
+import com.eugene.sharednotes.common.Role;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import javax.crypto.SecretKey;
 import java.time.Clock;
@@ -36,7 +34,10 @@ class JwtServiceTest {
             Keys.hmacShaKeyFor(Base64.getDecoder().decode(SECRET));
 
     private static final Duration DEFAULT_EXPIRATION = Duration.ofMinutes(15);
+
     private static final Long USER_ID = 42L;
+
+    private static final Role USER_ROLE = Role.USER;
 
     // Момент в котором застыли тесты. Значение произвольное — важна фиксированность.
     private static final Instant FIXED_NOW = Instant.parse("2026-01-01T12:00:00Z");
@@ -49,40 +50,62 @@ class JwtServiceTest {
         jwtService = new JwtService(SECRET, DEFAULT_EXPIRATION, FIXED_CLOCK);
     }
 
-    // Собирает токен вручную, минуя сервис — чтобы задать любой subject
-    private String tokenWithSubject(String subject, SecretKey key) {
+    // Собирает токен вручную, минуя сервис — чтобы задать любой subject и claim
+    private String tokenWithSubject(String subject, String claim) {
         Instant now = Instant.now(FIXED_CLOCK);
         return Jwts.builder()
                 .subject(subject)
+                .claim(JwtService.ROLE_CLAIM, claim)
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plus(JwtServiceTest.DEFAULT_EXPIRATION)))
-                .signWith(key)
+                .expiration(Date.from(now.plus(DEFAULT_EXPIRATION)))
+                .signWith(SECRET_KEY)
                 .compact();
     }
 
     @Nested
     class GenerateAccessToken {
-
         @Test
         void shouldPutUserIdIntoSubject() {
-            GeneratedAccessToken access = jwtService.generateAccessToken(USER_ID);
+            GeneratedAccessToken access = jwtService.generateAccessToken(USER_ID, USER_ROLE);
 
             assertThat(jwtService.extractUserId(access.token())).isEqualTo(USER_ID);
         }
 
         @Test
+        void shouldPutRoleIntoClaim() {
+            GeneratedAccessToken access = jwtService.generateAccessToken(USER_ID, USER_ROLE);
+
+            assertThat(jwtService.extractRole(access.token())).isEqualTo(USER_ROLE);
+        }
+
+        @Test
         void shouldSetExpiresAtToNowPlusTtl() {
-            GeneratedAccessToken access = jwtService.generateAccessToken(USER_ID);
+            GeneratedAccessToken access = jwtService.generateAccessToken(USER_ID, USER_ROLE);
 
             assertThat(access.expiresAt()).isEqualTo(FIXED_NOW.plus(DEFAULT_EXPIRATION));
+        }
+
+        @Test
+        void shouldThrowNPE_whenUserIdIsNull() {
+            assertThatThrownBy(() -> jwtService.generateAccessToken(null, USER_ROLE))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        void shouldThrowNPE_whenRoleClaimIsNull() {
+            assertThatThrownBy(() -> jwtService.generateAccessToken(USER_ID, null))
+                    .isInstanceOf(NullPointerException.class);
         }
     }
 
     @Nested
     class ExtractUserId {
+
+        private static final String ROLE_NAME = "USER";
+
         @Test
         void shouldThrowJwtException_whenSubjectIsNotNumeric() {
-            String token = tokenWithSubject("abc", SECRET_KEY);
+            String token = tokenWithSubject("abc", ROLE_NAME);
 
             assertThatThrownBy(() -> jwtService.extractUserId(token))
                     .isInstanceOf(JwtException.class);
@@ -96,7 +119,7 @@ class JwtServiceTest {
 
         @Test
         void shouldThrowJwtException_whenTokenIsFake() {
-            String token = tokenWithSubject(String.valueOf(USER_ID), SECRET_KEY);
+            String token = tokenWithSubject(String.valueOf(USER_ID), ROLE_NAME);
 
             String fakedToken = token + "1";
             assertThatThrownBy(() -> jwtService.extractUserId(fakedToken))
@@ -105,69 +128,32 @@ class JwtServiceTest {
     }
 
     @Nested
-    class IsAccessTokenValid {
-        @Test
-        void shouldReturnFalse_whenSubjectIsNotNumeric() {
-            String token = tokenWithSubject("abc", SECRET_KEY);
+    class ExtractRole {
 
-            assertThat(jwtService.isAccessTokenValid(token, USER_ID)).isFalse();
+        private static final String SUBJECT = String.valueOf(USER_ID);
+
+        @Test
+        void shouldReturnRole_whenExtractionSucceeds() {
+            String token = tokenWithSubject(SUBJECT, "ADMIN");
+
+            assertThat(jwtService.extractRole(token)).isEqualTo(Role.ADMIN);
         }
 
         @Test
-        void shouldReturnTrue_whenTokenIsFreshAndUserMatches() {
-            String token = tokenWithSubject(
-                    String.valueOf(USER_ID),
-                    SECRET_KEY
-            );
+        void shouldThrowJwtException_whenClaimIsMissing() {
+            String token = tokenWithSubject(SUBJECT, null);
 
-            assertThat(jwtService.isAccessTokenValid(token, USER_ID)).isTrue();
+            assertThatThrownBy(() -> jwtService.extractRole(token))
+                    .isInstanceOf(JwtException.class)
+                    .hasMessage("Role claim is missing");
         }
 
         @Test
-        void shouldReturnFalse_whenUserIdDoesNotMatch() {
-            String token = tokenWithSubject("12", SECRET_KEY);
+        void shouldThrowJwtException_whenClaimIsNotEnum() {
+            String token = tokenWithSubject(SUBJECT, "SUPER_ADMIN");
 
-            assertThat(jwtService.isAccessTokenValid(token, USER_ID)).isFalse();
-        }
-
-        @Test
-        void shouldReturnFalse_whenSignedWithForeignKey() {
-            SecretKey foreignKey = Jwts.SIG.HS256.key().build();
-            String token = tokenWithSubject(
-                    String.valueOf(USER_ID),
-                    foreignKey
-            );
-
-            assertThat(jwtService.isAccessTokenValid(token, USER_ID)).isFalse();
-        }
-
-        @Test
-        void shouldReturnFalse_whenTokenIsExpired() {
-            // Сервис с часами на час раньше — токен родится уже истёкшим.
-            Clock pastClock = Clock.fixed(FIXED_NOW.minus(Duration.ofHours(1)),ZoneOffset.UTC);
-            JwtService pastJwtService = new JwtService(SECRET, DEFAULT_EXPIRATION, pastClock);
-
-            String expiredToken = pastJwtService.generateAccessToken(USER_ID).token();
-
-            assertThat(jwtService.isAccessTokenValid(expiredToken, USER_ID)).isFalse();
-        }
-
-        @Test
-        void shouldReturnTrue_whenTokenIsNotYetExpired() {
-            Clock recentClock = Clock.fixed(FIXED_NOW.minus(Duration.ofMinutes(5)), ZoneOffset.UTC);
-
-            JwtService recentJwtService = new JwtService(SECRET, DEFAULT_EXPIRATION, recentClock);
-
-            String token = recentJwtService.generateAccessToken(USER_ID).token();
-
-            assertThat(jwtService.isAccessTokenValid(token, USER_ID)).isTrue();
-        }
-
-        @ParameterizedTest
-        @NullAndEmptySource
-        @ValueSource(strings = {"   "})
-        void shouldReturnFalse_whenTokenIsNullOrBlank(String token) {
-            assertThat(jwtService.isAccessTokenValid(token, USER_ID)).isFalse();
+            assertThatThrownBy(() -> jwtService.extractRole(token))
+                    .isInstanceOf(JwtException.class);
         }
     }
 }

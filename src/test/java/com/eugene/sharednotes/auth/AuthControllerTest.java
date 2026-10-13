@@ -5,15 +5,13 @@ import com.eugene.sharednotes.auth.dto.ChangePasswordRequest;
 import com.eugene.sharednotes.auth.dto.LoginRequest;
 import com.eugene.sharednotes.auth.dto.RegisterRequest;
 import com.eugene.sharednotes.auth.dto.TokenPairResponse;
+import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.exceptions.ExpiredRefreshTokenException;
 import com.eugene.sharednotes.exceptions.InvalidPasswordException;
 import com.eugene.sharednotes.exceptions.RestoreWindowExpiredException;
 import com.eugene.sharednotes.exceptions.RevokedTokenException;
 import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
 import com.eugene.sharednotes.exceptions.dto.ErrorCode;
-import com.eugene.sharednotes.security.SecurityUser;
-import com.eugene.sharednotes.user.UserEntity;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -21,13 +19,13 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import static org.hamcrest.Matchers.hasItems;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -37,22 +35,10 @@ class AuthControllerTest extends ControllerTestBase {
 
     private static final Long USER_ID = 1L;
 
+    private static final RequestPostProcessor AUTH_USER = authAs(USER_ID, Role.USER);
+
     @MockitoBean
     private AuthService authService;
-
-    private SecurityUser securityUser;
-
-    @BeforeEach
-    void setUp() {
-
-        UserEntity existingUser = UserEntity.builder()
-                .id(USER_ID)
-                .username("Bob")
-                .email("bob@mail.ru")
-                .build();
-
-        securityUser = new SecurityUser(existingUser);
-    }
 
     @Nested
     class Register {
@@ -72,7 +58,6 @@ class AuthControllerTest extends ControllerTestBase {
 
         @Test
         void shouldReturnTokens_whenRequestIsValid() throws Exception {
-
             when(authService.register(any(RegisterRequest.class)))
                     .thenReturn(new TokenPairResponse("ACCESS", "REFRESH"));
 
@@ -80,14 +65,11 @@ class AuthControllerTest extends ControllerTestBase {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.accessToken").value("ACCESS"))
                     .andExpect(jsonPath("$.refreshToken").value("REFRESH"));
-
-
         }
 
         // Exceptions
         @Test
         void shouldReturn409WithErrorResponse_whenUserAlreadyExists() throws Exception {
-
             when(authService.register(any(RegisterRequest.class)))
                     .thenThrow(new UserAlreadyExistsException("error message"));
 
@@ -177,8 +159,6 @@ class AuthControllerTest extends ControllerTestBase {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.accessToken").value("ACCESS"))
                     .andExpect(jsonPath("$.refreshToken").value("REFRESH"));
-
-
         }
 
         // Validation
@@ -261,7 +241,6 @@ class AuthControllerTest extends ControllerTestBase {
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
-
         }
 
         @Test
@@ -275,7 +254,6 @@ class AuthControllerTest extends ControllerTestBase {
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
-
         }
 
         @Test
@@ -332,7 +310,7 @@ class AuthControllerTest extends ControllerTestBase {
 
         @Test
         void shouldReturn204_whenAuthenticated() throws Exception {
-            mockMvc.perform(post("/auth/logout-all").with(user(securityUser)))
+            mockMvc.perform(post("/auth/logout-all").with(AUTH_USER))
                     .andExpect(status().isNoContent());
 
             verify(authService).logoutAll(USER_ID);
@@ -367,7 +345,7 @@ class AuthControllerTest extends ControllerTestBase {
                     new ChangePasswordRequest("OldPass1@", "NewPass1@")))
                     .thenReturn(new TokenPairResponse("ACCESS", "REFRESH"));
 
-            mockMvc.perform(changePasswordRequest("OldPass1@", "NewPass1@").with(user(securityUser)))
+            mockMvc.perform(changePasswordRequest("OldPass1@", "NewPass1@").with(AUTH_USER))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.accessToken").value("ACCESS"))
                     .andExpect(jsonPath("$.refreshToken").value("REFRESH"));
@@ -382,20 +360,21 @@ class AuthControllerTest extends ControllerTestBase {
         }
 
         @Test
-        void shouldReturn401_whenOldPassIsWrong() throws Exception {
+        void shouldReturn400_whenOldPassIsWrong() throws Exception {
             when(authService.changePassword(USER_ID, new ChangePasswordRequest("WrongPass1@", "NewPass1@")))
                     .thenThrow(new InvalidPasswordException("error message"));
 
-            mockMvc.perform(changePasswordRequest("WrongPass1@", "NewPass1@").with(user(securityUser)))
+            mockMvc.perform(changePasswordRequest("WrongPass1@", "NewPass1@").with(AUTH_USER))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_PASSWORD.toString()))
                     .andExpect(jsonPath("$.message").exists())
+                    .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
         }
 
         @Test
         void shouldReturn400_whenRequestFieldsAreBlank() throws Exception {
-            mockMvc.perform(changePasswordRequest("", "").with(user(securityUser)))
+            mockMvc.perform(changePasswordRequest("", "").with(AUTH_USER))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
                     .andExpect(jsonPath("$.message").exists())
@@ -409,7 +388,7 @@ class AuthControllerTest extends ControllerTestBase {
 
         @Test
         void shouldReturn400_whenNewPassIsInvalid() throws Exception {
-            mockMvc.perform(changePasswordRequest("OldPass1@", "newpass").with(user(securityUser)))
+            mockMvc.perform(changePasswordRequest("OldPass1@", "newpass").with(AUTH_USER))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
                     .andExpect(jsonPath("$.message").exists())

@@ -1,12 +1,14 @@
 package com.eugene.sharednotes.auth.jwt;
 
 import com.eugene.sharednotes.auth.dto.GeneratedAccessToken;
+import com.eugene.sharednotes.common.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.Keys;
 import lombok.Getter;
+import lombok.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +18,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
+import java.util.Objects;
 
 /**
  * Сервис работы с access-токенами: генерация, парсинг, валидация.
@@ -25,6 +28,9 @@ import java.util.Date;
  */
 @Service
 public class JwtService {
+
+    static final String ROLE_CLAIM = "role";
+
     private final SecretKey secretKey;
     private final Clock clock;
 
@@ -44,12 +50,16 @@ public class JwtService {
      *
      * @return токен вместе со временем истечения.
      */
-    public GeneratedAccessToken generateAccessToken(Long userId) {
+    public GeneratedAccessToken generateAccessToken(@NonNull Long userId, @NonNull Role role) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        Objects.requireNonNull(role, "role must not be null");
+
         Instant now = Instant.now(clock);
         Instant expiresAt = now.plus(expiration);
 
         String accessToken = Jwts.builder()
                 .subject(String.valueOf(userId))
+                .claim(ROLE_CLAIM, role.name())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .signWith(secretKey)
@@ -77,6 +87,25 @@ public class JwtService {
         }
     }
 
+    /**
+     * Извлекает role (claim) из токена
+     *
+     * @throws JwtException если токен невалиден, просрочен или повреждён.
+     * @throws MalformedJwtException если claim роли отсутствует или значение не входит в {@link Role}.
+     */
+    public Role extractRole(String accessToken) {
+        String roleName = extractAllClaims(accessToken).get(ROLE_CLAIM, String.class);
+
+        if (roleName == null)
+            throw new MalformedJwtException("Role claim is missing");
+
+        try {
+            return Role.valueOf(roleName);
+        } catch (IllegalArgumentException e) {
+            throw new MalformedJwtException("Role claim is not correct role: " + roleName, e);
+        }
+    }
+
     // JJWT сверяет со своими часами — подставляем те же что при генерации.
     private Claims extractAllClaims(String accessToken) {
         return Jwts.parser()
@@ -85,23 +114,5 @@ public class JwtService {
                 .build()
                 .parseSignedClaims(accessToken)
                 .getPayload();
-    }
-
-    /**
-     * Проверяет, что токен валиден, не просрочен и принадлежит указанному пользователю.
-     * В отличие от extract-методов, не выбрасывает исключение при проблемах с токеном —
-     * любая ошибка приводит к false.
-     *
-     * @return false при любой проблеме с токеном
-     */
-    public boolean isAccessTokenValid(String accessToken, Long expectedUserId) {
-        if (accessToken == null || accessToken.isBlank()) return false;
-
-        try {
-            Long userId = extractUserId(accessToken);
-            return userId.equals(expectedUserId);
-        } catch (JwtException e) {
-            return false;
-        }
     }
 }

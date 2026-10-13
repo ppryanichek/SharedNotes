@@ -1,7 +1,7 @@
 package com.eugene.sharednotes.auth;
 
 import com.eugene.sharednotes.auth.dto.*;
-import com.eugene.sharednotes.security.SecurityUser;
+import com.eugene.sharednotes.security.JwtPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -37,14 +37,14 @@ public class AuthController {
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PostMapping("/logout-all")
-    public void logoutAll(@AuthenticationPrincipal SecurityUser principal) {
-        authService.logoutAll(principal.getUserId());
+    public void logoutAll(@AuthenticationPrincipal JwtPrincipal principal) {
+        authService.logoutAll(principal.id());
     }
 
     @PostMapping("/change-password")
-    public TokenPairResponse changePassword(@AuthenticationPrincipal SecurityUser principal,
+    public TokenPairResponse changePassword(@AuthenticationPrincipal JwtPrincipal principal,
                                @Valid @RequestBody ChangePasswordRequest request) {
-        return authService.changePassword(principal.getUserId(), request);
+        return authService.changePassword(principal.id(), request);
     }
 
     @PostMapping("/restore")

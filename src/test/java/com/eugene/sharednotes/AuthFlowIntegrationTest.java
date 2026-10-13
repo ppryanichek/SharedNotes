@@ -3,7 +3,10 @@ package com.eugene.sharednotes;
 import com.eugene.sharednotes.auth.RefreshToken;
 import com.eugene.sharednotes.auth.RefreshTokenRepository;
 import com.eugene.sharednotes.auth.dto.TokenPairResponse;
+import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.exceptions.dto.ErrorCode;
+import com.eugene.sharednotes.user.UserEntity;
+import com.eugene.sharednotes.user.UserRepository;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -14,6 +17,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import tools.jackson.databind.ObjectMapper;
@@ -36,9 +40,14 @@ class AuthFlowIntegrationTest {
     private MockMvc mockMvc;
 
     @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private UserRepository userRepository;
 
     private String refreshBody(String token) {
         return """
@@ -176,5 +185,42 @@ class AuthFlowIntegrationTest {
         assertThat(refreshTokenRepository.findAll())
                 .isNotEmpty()
                 .allMatch(RefreshToken::isRevoked);
+    }
+
+    @Test
+    void shouldReturn403_whenNoLongerAdmin() throws Exception {
+        UserEntity testAdmin = UserEntity.builder()
+                .username("TestAdmin")
+                .email("admin@mail.ru")
+                .password(passwordEncoder.encode("Password1@"))
+                .role(Role.ADMIN)
+                .build();
+
+        Long adminId = userRepository.save(testAdmin).getId();
+
+        String response = mockMvc.perform(postBody("/auth/login",
+                        """
+                                {
+                                "email": "admin@mail.ru",
+                                "password": "Password1@"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String accessToken = JsonPath.read(response, "$.accessToken");
+
+        mockMvc.perform(get("/admin/users")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        jdbcTemplate.update("UPDATE users SET role = ? WHERE id = ?", Role.USER.name(), adminId);
+
+        mockMvc.perform(get("/admin/users")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(ErrorCode.ACCESS_DENIED.toString()));
     }
 }

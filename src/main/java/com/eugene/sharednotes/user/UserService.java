@@ -208,7 +208,7 @@ public class UserService {
      * @throws RestoreWindowExpiredException если окно восстановления истекло.
      */
     @Transactional
-    public Long restore(String email, String password) {
+    public UserResponse restore(String email, String password) {
         UserEntity userEntity = userRepository.findSoftDeletedByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
 
@@ -221,7 +221,7 @@ public class UserService {
 
         userEntity.setDeletedAt(null);
 
-        return userEntity.getId();
+        return UserResponse.from(userEntity);
     }
 
     public boolean adminExists() {

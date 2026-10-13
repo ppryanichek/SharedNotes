@@ -51,7 +51,7 @@ public class AuthService {
      *                      </ul>
      *
      * @return {@link TokenPairResponse} новую пару (refresh и access) токенов
-     * созданных через {@link #issueTokens(Long)}.
+     * созданных через {@link #issueTokens(Long, Role)}.
      * @throws UserAlreadyExistsException если пользователь с данным email или username уже существует.
      */
     public TokenPairResponse register(RegisterRequest request) {
@@ -62,7 +62,7 @@ public class AuthService {
                 request.email(),
                 defaultRole
         ));
-        return issueTokens(userResponse.id());
+        return issueTokens(userResponse.id(), defaultRole);
     }
 
     /**
@@ -75,7 +75,7 @@ public class AuthService {
      *                      </ul>
      *
      * @return {@link TokenPairResponse} новую пару (refresh и access) токенов
-     * созданных через {@link #issueTokens(Long)}.
+     * созданных через {@link #issueTokens(Long, Role)}.
      *
      * @throws BadCredentialsException если email не найден или неверный пароль.
      */
@@ -84,7 +84,7 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
         SecurityUser principal = (SecurityUser) auth.getPrincipal();
-        return issueTokens(principal.getUserId());
+        return issueTokens(principal.getUserId(), principal.getRole());
     }
 
     /**
@@ -92,18 +92,22 @@ public class AuthService {
      * <p>
      * Все текущие сессии пользователя отзываются, взамен выдаётся новая пара токенов.
      *
+     * @param userId id пользователя.
      * @param request старый и новый пароли в открытом виде.
      *
      * @return {@link TokenPairResponse} новую пару (refresh и access) токенов
      *
-     * @throws UserNotFoundException    если пользователя с данным id не найден.
+     * @throws UserNotFoundException    если пользователь с данным id не найден.
      * @throws InvalidPasswordException если текущий пароль неверный.
      */
     @Transactional
     public TokenPairResponse changePassword(Long userId, ChangePasswordRequest request) {
         userService.changePassword(userId, request.oldPassword(), request.newPassword());
         refreshTokenService.revokeAll(userId);
-        return issueTokens(userId);
+
+        Role role = userService.findById(userId).role();
+
+        return issueTokens(userId, role);
     }
 
     /**
@@ -128,13 +132,19 @@ public class AuthService {
      * Ротация делегируется {@link RefreshTokenService#rotate(String)}.
      *
      * @return {@link TokenPairResponse} новую пару (refresh и access) токенов.
-     * @throws BadCredentialsException если токен не найден.
+     * @throws BadCredentialsException если токен или пользователь не найден.
      * @throws RevokedTokenException если предъявлен отозванный токен (переиспользование) — все сессии пользователя отзываются.
      * @throws ExpiredRefreshTokenException если токен истёк.
      */
     public TokenPairResponse refresh(String refreshToken) {
         RotationResult result = refreshTokenService.rotate(refreshToken);
-        GeneratedAccessToken access = jwtService.generateAccessToken(result.userId());
+        Role role;
+        try {
+            role = userService.findById(result.userId()).role();
+        } catch (UserNotFoundException e) {
+            throw new BadCredentialsException("Invalid refresh token", e);
+        }
+        GeneratedAccessToken access = jwtService.generateAccessToken(result.userId(), role);
         return new TokenPairResponse(access.token(), result.rawRefreshToken());
     }
 
@@ -149,22 +159,23 @@ public class AuthService {
      *                      </ul>
      *
      * @return {@link TokenPairResponse} новую пару (refresh и access) токенов
-     * созданных через {@link #issueTokens(Long)}.
+     * созданных через {@link #issueTokens(Long, Role)}.
      *
      * @throws UserNotFoundException            если пользователя с данным email не найден.
      * @throws BadCredentialsException          если пароль неверный.
      * @throws RestoreWindowExpiredException    если срок восстановления истёк.
      */
     public TokenPairResponse restore(LoginRequest request) {
-        return issueTokens(userService.restore(request.email(), request.password()));
+        UserResponse response = userService.restore(request.email(), request.password());
+        return issueTokens(response.id(), response.role());
     }
 
     /**
      * Генерирует токены.
      * @return новую пару токенов в сыром виде.
      */
-    private TokenPairResponse issueTokens(Long userId) {
-        GeneratedAccessToken access = jwtService.generateAccessToken(userId);
+    private TokenPairResponse issueTokens(Long userId, Role role) {
+        GeneratedAccessToken access = jwtService.generateAccessToken(userId, role);
         String refreshToken = refreshTokenService.create(userId);
         return new TokenPairResponse(access.token(), refreshToken);
     }

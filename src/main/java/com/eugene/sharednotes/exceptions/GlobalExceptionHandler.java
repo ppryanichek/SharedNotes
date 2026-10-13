@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -81,7 +82,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException e) {
+    public ResponseEntity<ErrorResponse> handleBadCredentials() {
         HttpStatus httpStatus = HttpStatus.UNAUTHORIZED;
         return ResponseEntity.status(httpStatus)
                 .body(ErrorResponse.of(httpStatus.value(), ErrorCode.BAD_CREDENTIALS, "Invalid email or password"));
@@ -99,6 +100,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         HttpStatus httpStatus = HttpStatus.GONE;
         return ResponseEntity.status(httpStatus)
                 .body(ErrorResponse.of(httpStatus.value(), ErrorCode.RESTORE_WINDOW_EXPIRED, e.getMessage()));
+    }
+
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAuthorizationDenied() {
+        HttpStatus httpStatus = HttpStatus.FORBIDDEN;
+        return ResponseEntity.status(httpStatus)
+                .body(ErrorResponse.of(httpStatus.value(), ErrorCode.ACCESS_DENIED, "Access denied"));
     }
 
     @ExceptionHandler(Exception.class)

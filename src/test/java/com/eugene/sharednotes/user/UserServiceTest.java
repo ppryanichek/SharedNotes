@@ -404,17 +404,24 @@ class UserServiceTest {
         }
 
         @Test
-        void shouldSetDeletedAtToNull_whenRestorationSucceeds() {
-            existingUser.setDeletedAt(FIXED_NOW.minus(Duration.ofDays(29)));
+        void shouldRestoreAndReturnUser_whenWithinRestorationWindow() {
+            UserEntity deletedAdmin = UserEntity.builder()
+                    .id(1L)
+                    .username("eugene")
+                    .email("eugene@mail.ru")
+                    .password("hash")
+                    .deletedAt(FIXED_NOW.minus(Duration.ofDays(29)))
+                    .role(Role.ADMIN)
+                    .build();
 
-            when(userRepository.findSoftDeletedByEmail("eugene@mail.ru")).thenReturn(Optional.of(existingUser));
+            when(userRepository.findSoftDeletedByEmail("eugene@mail.ru")).thenReturn(Optional.of(deletedAdmin));
             when(passwordEncoder.matches("pass", "hash")).thenReturn(true);
 
-            Long userId = userService.restore("eugene@mail.ru", "pass");
+            UserResponse response = userService.restore("eugene@mail.ru", "pass");
 
-            assertThat(existingUser.getDeletedAt()).isNull();
-            assertThat(userId).isEqualTo(1L);
-
+            assertThat(deletedAdmin.getDeletedAt()).isNull();
+            assertThat(response.id()).isEqualTo(1L);
+            assertThat(response.role()).isEqualTo(Role.ADMIN);
         }
     }
 

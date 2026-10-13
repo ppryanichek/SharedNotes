@@ -1,7 +1,7 @@
-package com.eugene.sharednotes.user;
+package com.eugene.sharednotes.security;
 
 import com.eugene.sharednotes.common.Role;
-import com.eugene.sharednotes.security.SecurityUser;
+import com.eugene.sharednotes.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -18,11 +18,11 @@ public class RoleChecker {
     private final UserRepository userRepository;
 
     public boolean isStillAdmin(Authentication authentication) {
-        if (!(authentication.getPrincipal() instanceof  SecurityUser principal))
+        if (!(authentication.getPrincipal() instanceof JwtPrincipal(Long id)))
             return false;
 
         return userRepository
-                .findRoleById(principal.getUserId())
+                .findRoleById(id)
                 .map(role -> role == Role.ADMIN).orElse(false);
     }
 }

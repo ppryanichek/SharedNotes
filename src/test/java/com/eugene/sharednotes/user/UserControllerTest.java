@@ -5,21 +5,19 @@ import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
 import com.eugene.sharednotes.exceptions.UserNotFoundException;
 import com.eugene.sharednotes.exceptions.dto.ErrorCode;
-import com.eugene.sharednotes.security.SecurityUser;
 import com.eugene.sharednotes.user.dto.UserResponse;
 import com.eugene.sharednotes.user.dto.UserUpdateRequest;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -31,21 +29,10 @@ class UserControllerTest extends ControllerTestBase {
 
     private static final Long USER_ID = 1L;
 
+    private static final RequestPostProcessor AUTH_USER = authAs(USER_ID, Role.USER);
+
     @MockitoBean
     private UserService userService;
-
-    private SecurityUser securityUser;
-
-    @BeforeEach
-    void setUp() {
-        UserEntity existingUser = UserEntity.builder()
-                .id(USER_ID)
-                .username("Bob")
-                .email("bob@mail.ru")
-                .build();
-
-        securityUser = new SecurityUser(existingUser);
-    }
 
     @Nested
     class GetCurrentUser {
@@ -58,11 +45,10 @@ class UserControllerTest extends ControllerTestBase {
 
         @Test
         void shouldReturnUserInfo_whenAuthenticated() throws Exception {
-
             when(userService.findById(USER_ID))
                     .thenReturn(new UserResponse(USER_ID, "Bob", "bob@mail.ru", Role.USER));
 
-            mockMvc.perform(get("/users/me").with(user(securityUser)))
+            mockMvc.perform(get("/users/me").with(AUTH_USER))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(1))
                     .andExpect(jsonPath("$.username").value("Bob"))
@@ -73,11 +59,10 @@ class UserControllerTest extends ControllerTestBase {
 
         @Test
         void shouldReturn404WithErrorResponse_whenUserDoesNotExist() throws Exception {
-
             when(userService.findById(USER_ID))
                     .thenThrow(new UserNotFoundException("User not found with id: " + USER_ID));
 
-            mockMvc.perform(get("/users/me").with(user(securityUser)))
+            mockMvc.perform(get("/users/me").with(AUTH_USER))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.status").value(404))
                     .andExpect(jsonPath("$.code").value(ErrorCode.USER_NOT_FOUND.toString()))
@@ -111,7 +96,7 @@ class UserControllerTest extends ControllerTestBase {
                     .thenReturn(new UserResponse(USER_ID, "eugene", "eugene@mail.ru", Role.USER));
 
             mockMvc.perform(patch("/users/me")
-                            .with(user(securityUser))
+                            .with(AUTH_USER)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(FULL_BODY)
                     )
@@ -129,7 +114,7 @@ class UserControllerTest extends ControllerTestBase {
                     .thenThrow(new UserAlreadyExistsException("err message"));
 
             mockMvc.perform(patch("/users/me")
-                            .with(user(securityUser))
+                            .with(AUTH_USER)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(FULL_BODY)
                     )
@@ -138,7 +123,6 @@ class UserControllerTest extends ControllerTestBase {
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
-
         }
 
         @Test
@@ -147,7 +131,7 @@ class UserControllerTest extends ControllerTestBase {
                     .thenThrow(new UserNotFoundException("err message"));
 
             mockMvc.perform(patch("/users/me")
-                            .with(user(securityUser))
+                            .with(AUTH_USER)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(FULL_BODY)
                     )
@@ -161,7 +145,7 @@ class UserControllerTest extends ControllerTestBase {
         @Test
         void shouldReturn400_whenEmailIsInvalid() throws Exception {
             mockMvc.perform(patch("/users/me")
-                            .with(user(securityUser))
+                            .with(AUTH_USER)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
@@ -182,7 +166,7 @@ class UserControllerTest extends ControllerTestBase {
         @Test
         void shouldReturn400_whenUsernameIsInvalid() throws Exception {
             mockMvc.perform(patch("/users/me")
-                            .with(user(securityUser))
+                            .with(AUTH_USER)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
@@ -203,7 +187,7 @@ class UserControllerTest extends ControllerTestBase {
         @Test
         void shouldReturn400_whenNoFieldsProvided() throws Exception {
             mockMvc.perform(patch("/users/me")
-                            .with(user(securityUser))
+                            .with(AUTH_USER)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {}
@@ -225,7 +209,7 @@ class UserControllerTest extends ControllerTestBase {
 
         @Test
         void shouldReturn204_whenDeleteUser() throws Exception {
-            mockMvc.perform(delete("/users/me").with(user(securityUser)))
+            mockMvc.perform(delete("/users/me").with(AUTH_USER))
                     .andExpect(status().isNoContent());
 
             verify(userService).deleteUser(USER_ID);
@@ -244,13 +228,12 @@ class UserControllerTest extends ControllerTestBase {
             doThrow(new UserNotFoundException("User not found with id: " + USER_ID))
                     .when(userService).deleteUser(USER_ID);
 
-            mockMvc.perform(delete("/users/me").with(user(securityUser)))
+            mockMvc.perform(delete("/users/me").with(AUTH_USER))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value(ErrorCode.USER_NOT_FOUND.toString()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
         }
-
     }
 }

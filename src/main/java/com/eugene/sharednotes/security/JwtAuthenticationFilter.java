@@ -1,8 +1,7 @@
 package com.eugene.sharednotes.security;
 
 import com.eugene.sharednotes.auth.jwt.JwtService;
-import com.eugene.sharednotes.user.UserEntity;
-import com.eugene.sharednotes.user.UserRepository;
+import com.eugene.sharednotes.common.Role;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -13,19 +12,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
-    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -48,33 +48,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             Long userId = jwtService.extractUserId(accessToken);
+            Role role = jwtService.extractRole(accessToken);
 
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-            // Пропуск — либо не смогли извлечь userId, либо запрос уже аутентифицирован раньше в цепочке.
-            if (userId == null || authentication != null) {
+            // Пропуск — запрос уже аутентифицирован раньше в цепочке.
+            if (authentication != null && authentication.isAuthenticated()) {
                 continueChain(request, response, filterChain);
                 return;
             }
 
-            UserEntity user = userRepository.findById(userId)
-                    .orElseThrow(() -> new UsernameNotFoundException("User is not found with id: " + userId));
-
-            SecurityUser securityUser = new SecurityUser(user);
-
-            if (!jwtService.isAccessTokenValid(accessToken, securityUser.getUserId())) {
-                SecurityResponseWriter.writeErrorResponse(
-                        response,
-                        HttpServletResponse.SC_UNAUTHORIZED,
-                        "Invalid token!"
-                );
-                return;
-            }
+            List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
 
             UsernamePasswordAuthenticationToken passwordAuthenticationToken = new UsernamePasswordAuthenticationToken(
-                    securityUser,
+                    new JwtPrincipal(userId),
                     null,
-                    securityUser.getAuthorities()
+                    authorities
             );
 
             SecurityContextHolder.getContext().setAuthentication(passwordAuthenticationToken);
@@ -86,7 +75,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     "Token expired!"
             );
             return;
-        } catch (JwtException | UsernameNotFoundException e) {
+        } catch (JwtException e) {
             log.error("JWT authentication failed", e);
             SecurityResponseWriter.writeErrorResponse(
                     response,
@@ -96,7 +85,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        filterChain.doFilter(request, response);
+        continueChain(request, response, filterChain);
     }
 
     private void continueChain(HttpServletRequest request,
