@@ -116,5 +116,4 @@ docker compose up -d
 - Notes CRUD
 - Search, filter, pagination
 - Sharing
-- CI
 - Swagger
