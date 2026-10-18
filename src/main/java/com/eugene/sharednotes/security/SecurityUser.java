@@ -4,7 +4,6 @@ import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.user.UserEntity;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
