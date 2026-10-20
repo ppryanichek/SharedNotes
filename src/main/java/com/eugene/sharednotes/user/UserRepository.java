@@ -17,9 +17,11 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     Optional<UserEntity> findByEmail(String email);
 
-    boolean existsByEmail(String email);
+    @Query(value = "SELECT EXISTS(SELECT 1 FROM users WHERE email = :email)", nativeQuery = true)
+    boolean existsByEmailIncludingSoftDeleted(@Param("email") String email);
 
-    boolean existsByUsername(String username);
+    @Query(value = "SELECT EXISTS(SELECT 1 FROM users WHERE username = :username)", nativeQuery = true)
+    boolean existsByUsernameIncludingSoftDeleted(@Param("username") String username);
 
     boolean existsByRole(Role role);
 

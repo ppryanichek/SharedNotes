@@ -130,7 +130,7 @@ class UserServiceTest {
 
         @Test
         void shouldThrowUserAlreadyExistsException_whenUsernameIsTaken() {
-            when(userRepository.existsByUsername("Bob")).thenReturn(true);
+            when(userRepository.existsByUsernameIncludingSoftDeleted("Bob")).thenReturn(true);
 
             assertThatThrownBy(() -> userService.createUser(createRequestBase))
                     .isInstanceOf(UserAlreadyExistsException.class);
@@ -140,7 +140,7 @@ class UserServiceTest {
 
         @Test
         void shouldThrowUserAlreadyExistsException_whenEmailIsTaken() {
-            when(userRepository.existsByEmail("bob@mail.ru")).thenReturn(true);
+            when(userRepository.existsByEmailIncludingSoftDeleted("bob@mail.ru")).thenReturn(true);
 
             assertThatThrownBy(() -> userService.createUser(createRequestBase))
                     .isInstanceOf(UserAlreadyExistsException.class);
@@ -231,7 +231,7 @@ class UserServiceTest {
         @Test
         void shouldThrowUserAlreadyExistsException_whenNewUsernameIsTaken() {
             when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-            when(userRepository.existsByUsername("newUsername")).thenReturn(true);
+            when(userRepository.existsByUsernameIncludingSoftDeleted("newUsername")).thenReturn(true);
 
             assertThatThrownBy(() ->
                     userService.updateUser(1L, updateRequest("newUsername", null)))
@@ -244,7 +244,7 @@ class UserServiceTest {
 
             userService.updateUser(1L, updateRequest("eugene", null));
 
-            verify(userRepository, never()).existsByUsername(any());
+            verify(userRepository, never()).existsByUsernameIncludingSoftDeleted(any());
             assertThat(existingUser.getUsername()).isEqualTo("eugene");
         }
 
@@ -272,7 +272,7 @@ class UserServiceTest {
         @Test
         void shouldThrowUserAlreadyExistsException_whenNewEmailIsTaken() {
             when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-            when(userRepository.existsByEmail("newEmail@mail.ru")).thenReturn(true);
+            when(userRepository.existsByEmailIncludingSoftDeleted("newEmail@mail.ru")).thenReturn(true);
 
             assertThatThrownBy(() ->
                     userService.updateUser(1L, updateRequest(null, "newEmail@mail.ru")))
@@ -285,7 +285,7 @@ class UserServiceTest {
 
             userService.updateUser(1L, updateRequest(null, "eugene@mail.ru"));
 
-            verify(userRepository, never()).existsByEmail(any());
+            verify(userRepository, never()).existsByEmailIncludingSoftDeleted(any());
             assertThat(existingUser.getEmail()).isEqualTo("eugene@mail.ru");
         }
 

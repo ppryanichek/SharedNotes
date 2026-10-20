@@ -108,10 +108,10 @@ public class UserService {
      * @throws UserAlreadyExistsException если пользователь с данным email или username уже существует.
      */
     public UserResponse createUser(CreateUserRequest request) {
-        if (userRepository.existsByEmail(request.email()))
+        if (userRepository.existsByEmailIncludingSoftDeleted(request.email()))
             throw new UserAlreadyExistsException("User already exists with this email: " + request.email());
 
-        if (userRepository.existsByUsername(request.username()))
+        if (userRepository.existsByUsernameIncludingSoftDeleted(request.username()))
             throw new UserAlreadyExistsException("User already exists with this username: " + request.username());
 
         UserEntity newUser = UserEntity.builder()
@@ -143,7 +143,7 @@ public class UserService {
 
         if (request.username() != null && !request.username().isBlank()) {
             if (!request.username().equals(updateUser.getUsername())
-                    && userRepository.existsByUsername(request.username()))
+                    && userRepository.existsByUsernameIncludingSoftDeleted(request.username()))
                 throw new UserAlreadyExistsException("User already exists with this username: " + request.username());
 
             updateUser.setUsername(request.username());
@@ -151,7 +151,7 @@ public class UserService {
 
         if (request.email() != null && !request.email().isBlank()) {
             if (!request.email().equals(updateUser.getEmail())
-                    && userRepository.existsByEmail(request.email()))
+                    && userRepository.existsByEmailIncludingSoftDeleted(request.email()))
                 throw new UserAlreadyExistsException("User already exists with this email: " + request.email());
 
             updateUser.setEmail(request.email());

@@ -68,13 +68,23 @@ class UserRepositoryTest extends RepositoryTestBase {
         }
 
         @Test
-        void shouldReturnFalse_whenCheckedByEmail() {
-            assertThat(userRepository.existsByEmail("bob@mail.ru")).isFalse();
+        void shouldReturnTrue_whenCheckedByEmail() {
+            assertThat(userRepository.existsByEmailIncludingSoftDeleted("bob@mail.ru")).isTrue();
         }
 
         @Test
-        void shouldReturnFalse_whenCheckedByUsername() {
-            assertThat(userRepository.existsByUsername("Bob")).isFalse();
+        void shouldReturnFalse_whenEmailDoesNotExist() {
+            assertThat(userRepository.existsByEmailIncludingSoftDeleted("eugene@mail.ru")).isFalse();
+        }
+
+        @Test
+        void shouldReturnTrue_whenCheckedByUsername() {
+            assertThat(userRepository.existsByUsernameIncludingSoftDeleted("Bob")).isTrue();
+        }
+
+        @Test
+        void shouldReturnFalse_whenUsernameDoesNotExist() {
+            assertThat(userRepository.existsByUsernameIncludingSoftDeleted("Eugene")).isFalse();
         }
 
         @Test
@@ -94,7 +104,6 @@ class UserRepositoryTest extends RepositoryTestBase {
                     .isInstanceOf(ConstraintViolationException.class);
         }
     }
-
 
     @Nested
     class ActiveUser {
