@@ -28,6 +28,7 @@ import java.time.Instant;
  * пользователи исключаются автоматически через {@link UserEntity} ({@code @SQLRestriction}).
  * <p>Использует {@link Clock} для проверки истечения окна восстановления пользователя.
  */
+@Transactional(readOnly = true)
 @Service
 public class UserService {
     private final UserRepository userRepository;
@@ -107,6 +108,7 @@ public class UserService {
      * @return информацию о созданном пользователе (за исключением пароля).
      * @throws UserAlreadyExistsException если пользователь с данным email или username уже существует.
      */
+    @Transactional
     public UserResponse createUser(CreateUserRequest request) {
         if (userRepository.existsByEmailIncludingSoftDeleted(request.email()))
             throw new UserAlreadyExistsException("User already exists with this email: " + request.email());
