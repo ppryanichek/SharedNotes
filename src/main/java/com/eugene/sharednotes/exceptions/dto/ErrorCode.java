@@ -17,5 +17,9 @@ public enum ErrorCode {
     INTERNAL_ERROR,
     BAD_REQUEST,
 
-    RESTORE_WINDOW_EXPIRED
+    RESTORE_WINDOW_EXPIRED,
+
+    NOTE_NOT_FOUND,
+    EMPTY_NOTE
+
 }
