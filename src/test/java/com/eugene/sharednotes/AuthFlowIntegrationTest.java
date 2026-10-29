@@ -2,25 +2,22 @@ package com.eugene.sharednotes;
 
 import com.eugene.sharednotes.auth.RefreshToken;
 import com.eugene.sharednotes.auth.RefreshTokenRepository;
+import com.eugene.sharednotes.auth.dto.ChangePasswordRequest;
+import com.eugene.sharednotes.auth.dto.LoginRequest;
+import com.eugene.sharednotes.auth.dto.RefreshTokenRequest;
 import com.eugene.sharednotes.auth.dto.TokenPairResponse;
 import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.exceptions.dto.ErrorCode;
 import com.eugene.sharednotes.user.UserEntity;
 import com.eugene.sharednotes.user.UserRepository;
-import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -28,101 +25,52 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(TestcontainersConfig.class)
-class AuthFlowIntegrationTest {
+class AuthFlowIntegrationTest extends IntegrationTestBase {
 
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private JdbcTemplate jdbcTemplate;
-    @Autowired
-    private ObjectMapper objectMapper;
-    @Autowired
     private UserRepository userRepository;
 
-    private String refreshBody(String token) {
-        return """
-                {"refreshToken": "%s"}
-                """.formatted(token);
-    }
-
-    private MockHttpServletRequestBuilder postBody(String uri, String body) {
+    private MockHttpServletRequestBuilder postBody(String uri, Object request) {
         return post(uri)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(body);
-    }
-
-    private TokenPairResponse register(String username, String email) throws Exception {
-        String response = mockMvc.perform(post("/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                    "username": "%s",
-                                    "password": "Password1@",
-                                    "email": "%s"
-                                }
-                                """.formatted(username, email)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        return new TokenPairResponse(
-                JsonPath.read(response, "$.accessToken"),
-                JsonPath.read(response, "$.refreshToken")
-        );
-    }
-
-    @BeforeEach
-    void cleanDatabase() {
-        jdbcTemplate.update("DELETE FROM refresh_tokens");
-        jdbcTemplate.update("DELETE FROM users");
+                .content(jsonMapper.writeValueAsString(request));
     }
 
     @Test
     void shouldRegisterLoginAndAccessProtectedEndpoint() throws Exception {
         register("Bob", "bob@mail.ru");
 
-        String response = mockMvc.perform(postBody("/auth/login",
-                        """
-                                {
-                                "email": "bob@mail.ru",
-                                "password": "Password1@"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        ResultActions loginResult = mockMvc
+                .perform(postBody(
+                        "/auth/login",
+                        new LoginRequest("bob@mail.ru", "Password1@")))
+                .andExpect(status().isOk());
 
-        String accessToken = JsonPath.read(response, "$.accessToken");
+        String accessToken = bodyOf(loginResult, TokenPairResponse.class).accessToken();
 
-        mockMvc.perform(get("/users/me")
-                        .header("Authorization", "Bearer " + accessToken))
+        mockMvc
+                .perform(get("/users/me")
+                        .with(bearer(accessToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("Bob"));
-
     }
 
     @Test
     void shouldReturn401AndNoRollback_whenReuseDetected() throws Exception {
         String oldToken = register("Bob", "bob@mail.ru").refreshToken();
 
-        mockMvc.perform(postBody("/auth/refresh", refreshBody(oldToken)))
+        mockMvc.perform(postBody("/auth/refresh", new RefreshTokenRequest(oldToken)))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(postBody("/auth/refresh", refreshBody(oldToken)))
+        mockMvc.perform(postBody("/auth/refresh", new RefreshTokenRequest(oldToken)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(ErrorCode.TOKEN_REVOKED.toString()));
+                .andExpect(jsonPath("$.code").value(ErrorCode.TOKEN_REVOKED.name()));
 
         assertThat(refreshTokenRepository.findAll())
                 .isNotEmpty()
@@ -133,44 +81,37 @@ class AuthFlowIntegrationTest {
     class ChangePassword {
 
         private TokenPairResponse oldTokens;
-        private String response;
+        private TokenPairResponse newTokens;
 
         @BeforeEach
         void setUp() throws Exception {
             oldTokens = register("Bob", "bob@mail.ru");
 
-            response = mockMvc.perform(postBody("/auth/change-password",
-                            """
-                                    {
-                                    "oldPassword": "Password1@",
-                                    "newPassword": "newPassword1@"
-                                    }
-                                    """)
-                            .header("Authorization", "Bearer " + oldTokens.accessToken()))
-                    .andExpect(status().isOk())
-                    .andReturn()
-                    .getResponse()
-                    .getContentAsString();
+            ResultActions result = mockMvc
+                    .perform(postBody("/auth/change-password",
+                            new ChangePasswordRequest("Password1@", "newPassword1@"))
+                            .with(bearer(oldTokens.accessToken())))
+                    .andExpect(status().isOk());
+
+            newTokens = bodyOf(result, TokenPairResponse.class);
         }
 
         @Test
         void shouldRevokeOldRefreshToken() throws Exception {
             // Old Refresh
-            mockMvc.perform(postBody("/auth/refresh", refreshBody(oldTokens.refreshToken())))
+            mockMvc.perform(postBody("/auth/refresh", new RefreshTokenRequest(oldTokens.refreshToken())))
                     .andExpect(status().isUnauthorized());
         }
 
         @Test
         void shouldIssueNewTokens() throws Exception {
-            TokenPairResponse newTokens = objectMapper.readValue(response, TokenPairResponse.class);
-
             // New Access
             mockMvc.perform(get("/users/me")
-                            .header("Authorization", "Bearer " + newTokens.accessToken()))
+                            .with(bearer(newTokens.accessToken())))
                     .andExpect(status().isOk());
 
             // New Refresh
-            mockMvc.perform(postBody("/auth/refresh", refreshBody(newTokens.refreshToken())))
+            mockMvc.perform(postBody("/auth/refresh", new RefreshTokenRequest(newTokens.refreshToken())))
                     .andExpect(status().isOk());
         }
     }
@@ -179,7 +120,7 @@ class AuthFlowIntegrationTest {
     void shouldRevokeCurrentSession_whenLogout() throws Exception {
         String oldToken = register("Bob", "bob@mail.ru").refreshToken();
 
-        mockMvc.perform(postBody("/auth/logout", refreshBody(oldToken)))
+        mockMvc.perform(postBody("/auth/logout", new RefreshTokenRequest(oldToken)))
                 .andExpect(status().isNoContent());
 
         assertThat(refreshTokenRepository.findAll())
@@ -198,29 +139,21 @@ class AuthFlowIntegrationTest {
 
         Long adminId = userRepository.save(testAdmin).getId();
 
-        String response = mockMvc.perform(postBody("/auth/login",
-                        """
-                                {
-                                "email": "admin@mail.ru",
-                                "password": "Password1@"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        ResultActions result = mockMvc.perform(postBody("/auth/login",
+                        new LoginRequest("admin@mail.ru", "Password1@")))
+                .andExpect(status().isOk());
 
-        String accessToken = JsonPath.read(response, "$.accessToken");
+        String accessToken = bodyOf(result, TokenPairResponse.class).accessToken();
 
         mockMvc.perform(get("/admin/users")
-                        .header("Authorization", "Bearer " + accessToken))
+                        .with(bearer(accessToken)))
                 .andExpect(status().isOk());
 
         jdbcTemplate.update("UPDATE users SET role = ? WHERE id = ?", Role.USER.name(), adminId);
 
         mockMvc.perform(get("/admin/users")
-                        .header("Authorization", "Bearer " + accessToken))
+                        .with(bearer(accessToken)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(ErrorCode.ACCESS_DENIED.toString()));
+                .andExpect(jsonPath("$.code").value(ErrorCode.ACCESS_DENIED.name()));
     }
 }

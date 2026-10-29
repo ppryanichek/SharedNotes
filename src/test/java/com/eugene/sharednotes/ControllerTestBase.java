@@ -5,7 +5,6 @@ import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.security.JwtPrincipal;
 import com.eugene.sharednotes.security.SecurityConfig;
 import com.eugene.sharednotes.security.SecurityResponseWriter;
-import com.eugene.sharednotes.user.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
