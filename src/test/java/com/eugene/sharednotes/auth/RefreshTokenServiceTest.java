@@ -74,7 +74,6 @@ class RefreshTokenServiceTest {
                 .user(existingUser)
                 .tokenHash(TOKEN_HASH)
                 .expiresAt(FIXED_NOW.plus(DEFAULT_EXPIRATION))
-                .revoked(false)
                 .build();
     }
 
@@ -165,7 +164,6 @@ class RefreshTokenServiceTest {
                     .user(existingUser)
                     .tokenHash(TOKEN_HASH)
                     .expiresAt(FIXED_NOW.minus(Duration.ofDays(40)))
-                    .revoked(false)
                     .build();
 
             when(refreshTokenRepository.findByTokenHash(TOKEN_HASH)).thenReturn(Optional.of(expiredToken));

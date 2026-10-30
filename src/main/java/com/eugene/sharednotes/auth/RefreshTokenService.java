@@ -55,7 +55,6 @@ public class RefreshTokenService {
      *                      </ul>
      *
      * @return токен в сыром виде.
-     * @throws EntityNotFoundException если пользователь с указанным userId не существует.
      */
     @Transactional
     public String create(Long userId) {

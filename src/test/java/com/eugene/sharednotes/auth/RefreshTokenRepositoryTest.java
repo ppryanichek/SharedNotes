@@ -41,18 +41,18 @@ class RefreshTokenRepositoryTest extends RepositoryTestBase {
         return user;
     }
 
-    private RefreshToken persistToken(UserEntity owner, String hash, boolean revoked, Instant expiresAt) {
+    private void persistToken(UserEntity owner, String hash, boolean revoked, Instant expiresAt) {
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(owner)
                 .tokenHash(hash)
-                .revoked(revoked)
                 .expiresAt(expiresAt)
                 .build();
+
+        refreshToken.setRevoked(revoked);
 
         entityManager.persist(refreshToken);
         entityManager.flush();
 
-        return refreshToken;
     }
 
     @BeforeEach
