@@ -109,6 +109,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ErrorResponse.of(httpStatus.value(), ErrorCode.ACCESS_DENIED, "Access denied"));
     }
 
+    @ExceptionHandler(NoteNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoteNotFound(NoteNotFoundException e) {
+        HttpStatus httpStatus = HttpStatus.NOT_FOUND;
+        return ResponseEntity.status(httpStatus)
+                .body(ErrorResponse.of(httpStatus.value(), ErrorCode.NOTE_NOT_FOUND, e.getMessage()));
+    }
+
+    @ExceptionHandler(EmptyNoteException.class)
+    public ResponseEntity<ErrorResponse> handleEmptyNote(EmptyNoteException e) {
+        HttpStatus httpStatus = HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(httpStatus)
+                .body(ErrorResponse.of(httpStatus.value(), ErrorCode.EMPTY_NOTE, e.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception e) {
         log.error("Unhandled exception", e);
