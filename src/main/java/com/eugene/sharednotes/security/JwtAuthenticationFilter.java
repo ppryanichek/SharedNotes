@@ -2,7 +2,7 @@ package com.eugene.sharednotes.security;
 
 import com.eugene.sharednotes.auth.jwt.JwtService;
 import com.eugene.sharednotes.common.Role;
-import com.eugene.sharednotes.exceptions.dto.ErrorCode;
+import com.eugene.sharednotes.error.dto.ErrorCode;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;

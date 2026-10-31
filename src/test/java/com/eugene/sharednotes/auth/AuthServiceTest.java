@@ -1,14 +1,18 @@
 package com.eugene.sharednotes.auth;
 
-import com.eugene.sharednotes.auth.dto.*;
+import com.eugene.sharednotes.auth.dto.ChangePasswordRequest;
+import com.eugene.sharednotes.auth.dto.GeneratedAccessToken;
+import com.eugene.sharednotes.auth.dto.LoginRequest;
+import com.eugene.sharednotes.auth.dto.RegisterRequest;
+import com.eugene.sharednotes.auth.dto.TokenPairResponse;
 import com.eugene.sharednotes.auth.jwt.JwtService;
 import com.eugene.sharednotes.common.Role;
-import com.eugene.sharednotes.exceptions.UserNotFoundException;
 import com.eugene.sharednotes.security.SecurityUser;
 import com.eugene.sharednotes.user.UserEntity;
 import com.eugene.sharednotes.user.UserService;
 import com.eugene.sharednotes.user.dto.CreateUserRequest;
 import com.eugene.sharednotes.user.dto.UserResponse;
+import com.eugene.sharednotes.user.exceptions.UserNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

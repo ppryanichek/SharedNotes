@@ -1,6 +1,6 @@
 package com.eugene.sharednotes.security;
 
-import com.eugene.sharednotes.exceptions.dto.ErrorCode;
+import com.eugene.sharednotes.error.dto.ErrorCode;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

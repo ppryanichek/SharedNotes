@@ -1,10 +1,10 @@
 package com.eugene.sharednotes.note;
 
-import com.eugene.sharednotes.exceptions.EmptyNoteException;
-import com.eugene.sharednotes.exceptions.NoteNotFoundException;
 import com.eugene.sharednotes.note.dto.CreateNoteRequest;
 import com.eugene.sharednotes.note.dto.NoteResponse;
 import com.eugene.sharednotes.note.dto.UpdateNoteRequest;
+import com.eugene.sharednotes.note.exceptions.EmptyNoteException;
+import com.eugene.sharednotes.note.exceptions.NoteNotFoundException;
 import com.eugene.sharednotes.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

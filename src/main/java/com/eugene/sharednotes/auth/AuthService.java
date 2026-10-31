@@ -1,13 +1,22 @@
 package com.eugene.sharednotes.auth;
 
-import com.eugene.sharednotes.auth.dto.*;
+import com.eugene.sharednotes.auth.dto.ChangePasswordRequest;
+import com.eugene.sharednotes.auth.dto.GeneratedAccessToken;
+import com.eugene.sharednotes.auth.dto.LoginRequest;
+import com.eugene.sharednotes.auth.dto.RegisterRequest;
+import com.eugene.sharednotes.auth.dto.TokenPairResponse;
+import com.eugene.sharednotes.auth.exceptions.ExpiredRefreshTokenException;
+import com.eugene.sharednotes.auth.exceptions.RevokedTokenException;
 import com.eugene.sharednotes.auth.jwt.JwtService;
 import com.eugene.sharednotes.common.Role;
-import com.eugene.sharednotes.exceptions.*;
 import com.eugene.sharednotes.security.SecurityUser;
 import com.eugene.sharednotes.user.UserService;
 import com.eugene.sharednotes.user.dto.CreateUserRequest;
 import com.eugene.sharednotes.user.dto.UserResponse;
+import com.eugene.sharednotes.user.exceptions.InvalidPasswordException;
+import com.eugene.sharednotes.user.exceptions.RestoreWindowExpiredException;
+import com.eugene.sharednotes.user.exceptions.UserAlreadyExistsException;
+import com.eugene.sharednotes.user.exceptions.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;

@@ -1,7 +1,7 @@
 package com.eugene.sharednotes.security;
 
-import com.eugene.sharednotes.exceptions.dto.ErrorCode;
-import com.eugene.sharednotes.exceptions.dto.ErrorResponse;
+import com.eugene.sharednotes.error.dto.ErrorCode;
+import com.eugene.sharednotes.error.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

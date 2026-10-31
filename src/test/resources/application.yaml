@@ -7,3 +7,9 @@ jwt:
 
 account:
   retention-period: ${ACCOUNT_RETENTION_PERIOD:30d}
+
+spring:
+  data:
+    web:
+      pageable:
+        serialization-mode: via_dto

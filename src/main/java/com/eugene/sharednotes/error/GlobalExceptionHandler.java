@@ -1,8 +1,16 @@
-package com.eugene.sharednotes.exceptions;
+package com.eugene.sharednotes.error;
 
-import com.eugene.sharednotes.exceptions.dto.ErrorCode;
-import com.eugene.sharednotes.exceptions.dto.ErrorResponse;
-import com.eugene.sharednotes.exceptions.dto.FieldError;
+import com.eugene.sharednotes.auth.exceptions.ExpiredRefreshTokenException;
+import com.eugene.sharednotes.auth.exceptions.RevokedTokenException;
+import com.eugene.sharednotes.error.dto.ErrorCode;
+import com.eugene.sharednotes.error.dto.ErrorResponse;
+import com.eugene.sharednotes.error.dto.FieldError;
+import com.eugene.sharednotes.note.exceptions.EmptyNoteException;
+import com.eugene.sharednotes.note.exceptions.NoteNotFoundException;
+import com.eugene.sharednotes.user.exceptions.InvalidPasswordException;
+import com.eugene.sharednotes.user.exceptions.RestoreWindowExpiredException;
+import com.eugene.sharednotes.user.exceptions.UserAlreadyExistsException;
+import com.eugene.sharednotes.user.exceptions.UserNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;

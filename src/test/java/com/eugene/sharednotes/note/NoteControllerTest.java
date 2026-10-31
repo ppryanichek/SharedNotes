@@ -2,12 +2,12 @@ package com.eugene.sharednotes.note;
 
 import com.eugene.sharednotes.ControllerTestBase;
 import com.eugene.sharednotes.common.Role;
-import com.eugene.sharednotes.exceptions.EmptyNoteException;
-import com.eugene.sharednotes.exceptions.NoteNotFoundException;
-import com.eugene.sharednotes.exceptions.dto.ErrorCode;
+import com.eugene.sharednotes.error.dto.ErrorCode;
 import com.eugene.sharednotes.note.dto.CreateNoteRequest;
 import com.eugene.sharednotes.note.dto.NoteResponse;
 import com.eugene.sharednotes.note.dto.UpdateNoteRequest;
+import com.eugene.sharednotes.note.exceptions.EmptyNoteException;
+import com.eugene.sharednotes.note.exceptions.NoteNotFoundException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
