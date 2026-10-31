@@ -15,6 +15,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -60,18 +61,19 @@ class AdminUserControllerTest extends ControllerTestBase {
     class FindAll {
 
         private MockHttpServletRequestBuilder findAllRequest() {
-            return get("/admin/users")
-                    .param("page", "0")
-                    .param("size", "20");
+            return get("/admin/users");
         }
 
         @Test
-        void shouldReturnListOfUsers() throws Exception {
+        void shouldReturnListOfUsersWithPagination_whenPageParamsSetByClient() throws Exception {
             when(userService.findAll(any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of(
                             new UserResponse(1L, "Bob", "bob@mail.ru", Role.USER))));
 
-            mockMvc.perform(findAllRequest().with(AUTH_ADMIN))
+            mockMvc.perform(findAllRequest().with(AUTH_ADMIN)
+                            .param("page", "1")
+                            .param("size", "10")
+                            .param("sort", "email,desc"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.content").isArray())
                     .andExpect(jsonPath("$.content[0].username").value("Bob"))
@@ -80,7 +82,27 @@ class AdminUserControllerTest extends ControllerTestBase {
 
             ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
             verify(userService).findAll(captor.capture());
+            assertThat(captor.getValue().getPageNumber()).isEqualTo(1);
+            assertThat(captor.getValue().getPageSize()).isEqualTo(10);
+            assertThat(captor.getValue().getSort()).isEqualTo(Sort.by(Sort.Direction.DESC, "email"));
+        }
+
+        @Test
+        void shouldApplyDefaultPagination_whenPageParamsAreMissing() throws Exception {
+            when(userService.findAll(any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(
+                            new UserResponse(1L, "Bob", "bob@mail.ru", Role.USER))));
+
+            mockMvc.perform(findAllRequest().with(AUTH_ADMIN))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content").isArray())
+                    .andExpect(jsonPath("$.totalElements").value(1));
+
+            ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+            verify(userService).findAll(captor.capture());
+            assertThat(captor.getValue().getPageNumber()).isZero();
             assertThat(captor.getValue().getPageSize()).isEqualTo(20);
+            assertThat(captor.getValue().getSort()).isEqualTo(Sort.by(Sort.Direction.DESC, "id"));
         }
 
         @Test
