@@ -1,6 +1,6 @@
 package com.eugene.sharednotes.note;
 
-import com.eugene.sharednotes.exceptions.EmptyNoteException;
+import com.eugene.sharednotes.note.exceptions.EmptyNoteException;
 import com.eugene.sharednotes.user.UserEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;

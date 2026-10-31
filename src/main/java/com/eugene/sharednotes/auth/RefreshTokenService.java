@@ -1,16 +1,15 @@
 package com.eugene.sharednotes.auth;
 
+import com.eugene.sharednotes.auth.exceptions.ExpiredRefreshTokenException;
+import com.eugene.sharednotes.auth.exceptions.RevokedTokenException;
 import com.eugene.sharednotes.common.Tokens;
-import com.eugene.sharednotes.exceptions.ExpiredRefreshTokenException;
-import com.eugene.sharednotes.exceptions.RevokedTokenException;
 import com.eugene.sharednotes.user.UserEntity;
 import com.eugene.sharednotes.user.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import lombok.extern.slf4j.Slf4j;
 
 import java.time.Clock;
 import java.time.Duration;

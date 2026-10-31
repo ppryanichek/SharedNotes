@@ -1,4 +1,4 @@
-package com.eugene.sharednotes.exceptions;
+package com.eugene.sharednotes.user.exceptions;
 
 public class RestoreWindowExpiredException extends RuntimeException {
     public RestoreWindowExpiredException(String message) {

@@ -1,4 +1,4 @@
-package com.eugene.sharednotes.exceptions.dto;
+package com.eugene.sharednotes.error.dto;
 
 public record FieldError(
         String field,

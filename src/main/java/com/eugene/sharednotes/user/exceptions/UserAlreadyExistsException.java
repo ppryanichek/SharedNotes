@@ -1,4 +1,4 @@
-package com.eugene.sharednotes.exceptions;
+package com.eugene.sharednotes.user.exceptions;
 
 public class UserAlreadyExistsException  extends RuntimeException{
     public UserAlreadyExistsException(String message) {

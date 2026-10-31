@@ -1,4 +1,4 @@
-package com.eugene.sharednotes.exceptions;
+package com.eugene.sharednotes.note.exceptions;
 
 public class EmptyNoteException extends RuntimeException {
     public EmptyNoteException() {

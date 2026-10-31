@@ -7,7 +7,7 @@ import com.eugene.sharednotes.auth.dto.LoginRequest;
 import com.eugene.sharednotes.auth.dto.RefreshTokenRequest;
 import com.eugene.sharednotes.auth.dto.TokenPairResponse;
 import com.eugene.sharednotes.common.Role;
-import com.eugene.sharednotes.exceptions.dto.ErrorCode;
+import com.eugene.sharednotes.error.dto.ErrorCode;
 import com.eugene.sharednotes.user.UserEntity;
 import com.eugene.sharednotes.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;

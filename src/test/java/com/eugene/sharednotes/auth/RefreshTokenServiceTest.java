@@ -1,8 +1,8 @@
 package com.eugene.sharednotes.auth;
 
+import com.eugene.sharednotes.auth.exceptions.ExpiredRefreshTokenException;
+import com.eugene.sharednotes.auth.exceptions.RevokedTokenException;
 import com.eugene.sharednotes.common.Tokens;
-import com.eugene.sharednotes.exceptions.ExpiredRefreshTokenException;
-import com.eugene.sharednotes.exceptions.RevokedTokenException;
 import com.eugene.sharednotes.user.UserEntity;
 import com.eugene.sharednotes.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +20,9 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;

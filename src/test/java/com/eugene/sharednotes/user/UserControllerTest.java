@@ -2,11 +2,11 @@ package com.eugene.sharednotes.user;
 
 import com.eugene.sharednotes.ControllerTestBase;
 import com.eugene.sharednotes.common.Role;
-import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
-import com.eugene.sharednotes.exceptions.UserNotFoundException;
-import com.eugene.sharednotes.exceptions.dto.ErrorCode;
+import com.eugene.sharednotes.error.dto.ErrorCode;
 import com.eugene.sharednotes.user.dto.UserResponse;
 import com.eugene.sharednotes.user.dto.UserUpdateRequest;
+import com.eugene.sharednotes.user.exceptions.UserAlreadyExistsException;
+import com.eugene.sharednotes.user.exceptions.UserNotFoundException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -19,9 +19,9 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 

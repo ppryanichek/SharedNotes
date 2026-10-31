@@ -2,13 +2,13 @@ package com.eugene.sharednotes.user;
 
 import com.eugene.sharednotes.auth.RefreshTokenService;
 import com.eugene.sharednotes.common.Role;
-import com.eugene.sharednotes.exceptions.InvalidPasswordException;
-import com.eugene.sharednotes.exceptions.RestoreWindowExpiredException;
-import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
-import com.eugene.sharednotes.exceptions.UserNotFoundException;
 import com.eugene.sharednotes.user.dto.CreateUserRequest;
 import com.eugene.sharednotes.user.dto.UserResponse;
 import com.eugene.sharednotes.user.dto.UserUpdateRequest;
+import com.eugene.sharednotes.user.exceptions.InvalidPasswordException;
+import com.eugene.sharednotes.user.exceptions.RestoreWindowExpiredException;
+import com.eugene.sharednotes.user.exceptions.UserAlreadyExistsException;
+import com.eugene.sharednotes.user.exceptions.UserNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
