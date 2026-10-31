@@ -13,6 +13,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 
@@ -25,6 +26,9 @@ public abstract class ControllerTestBase {
 
     @Autowired
     protected MockMvc mockMvc;
+
+    @Autowired
+    protected JsonMapper jsonMapper;
 
     @MockitoBean
     protected JwtService jwtService;

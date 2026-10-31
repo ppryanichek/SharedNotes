@@ -3,6 +3,7 @@ package com.eugene.sharednotes.auth;
 import com.eugene.sharednotes.ControllerTestBase;
 import com.eugene.sharednotes.auth.dto.ChangePasswordRequest;
 import com.eugene.sharednotes.auth.dto.LoginRequest;
+import com.eugene.sharednotes.auth.dto.RefreshTokenRequest;
 import com.eugene.sharednotes.auth.dto.RegisterRequest;
 import com.eugene.sharednotes.auth.dto.TokenPairResponse;
 import com.eugene.sharednotes.common.Role;
@@ -43,17 +44,11 @@ class AuthControllerTest extends ControllerTestBase {
     @Nested
     class Register {
 
-        private static MockHttpServletRequestBuilder registerRequest(
+        private MockHttpServletRequestBuilder registerRequest(
                 String username, String password, String email) {
             return post("/auth/register")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {
-                            "username": "%s",
-                            "password": "%s",
-                            "email": "%s"
-                            }
-                            """.formatted(username, password, email));
+                    .content(jsonMapper.writeValueAsString(new RegisterRequest(username, password, email)));
         }
 
         @Test
@@ -75,7 +70,7 @@ class AuthControllerTest extends ControllerTestBase {
 
             mockMvc.perform(registerRequest("Bob", "Password1@", "bob@mail.ru"))
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_ALREADY_EXISTS.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_ALREADY_EXISTS.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
@@ -86,7 +81,7 @@ class AuthControllerTest extends ControllerTestBase {
         void shouldReturn400_whenRequestFieldsAreBlank() throws Exception {
             mockMvc.perform(registerRequest("", "", ""))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").isArray())
@@ -100,7 +95,7 @@ class AuthControllerTest extends ControllerTestBase {
         void shouldReturn400_whenUsernameIsInvalid() throws Exception {
             mockMvc.perform(registerRequest("a", "Password1@", "bob@mail.ru"))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").isArray())
@@ -113,7 +108,7 @@ class AuthControllerTest extends ControllerTestBase {
         void shouldReturn400_whenEmailIsInvalid() throws Exception {
             mockMvc.perform(registerRequest("Bob", "Password1@", "not-an-email"))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").isArray())
@@ -126,7 +121,7 @@ class AuthControllerTest extends ControllerTestBase {
         void shouldReturn400_whenPasswordIsInvalid() throws Exception {
             mockMvc.perform(registerRequest("Bob", "weak", "bob@mail.ru"))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").isArray())
@@ -139,15 +134,10 @@ class AuthControllerTest extends ControllerTestBase {
     @Nested
     class Login {
 
-        private static MockHttpServletRequestBuilder loginRequest(String email, String password) {
+        private MockHttpServletRequestBuilder loginRequest(String email, String password) {
             return post("/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {
-                            "email": "%s",
-                            "password": "%s"
-                            }
-                            """.formatted(email, password));
+                    .content(jsonMapper.writeValueAsString(new LoginRequest(email, password)));
         }
 
         @Test
@@ -166,7 +156,7 @@ class AuthControllerTest extends ControllerTestBase {
         void shouldReturn400_whenRequestIsBlank() throws Exception {
             mockMvc.perform(loginRequest("", ""))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").isArray())
@@ -183,7 +173,7 @@ class AuthControllerTest extends ControllerTestBase {
 
             mockMvc.perform(loginRequest("bob@mail.ru", "WrongPassword1@"))
                     .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
@@ -196,12 +186,10 @@ class AuthControllerTest extends ControllerTestBase {
 
         private static final String REFRESH_TOKEN = "REFRESH";
 
-        private static MockHttpServletRequestBuilder refreshRequest(String refreshToken) {
+        private MockHttpServletRequestBuilder refreshRequest(String refreshToken) {
             return post("/auth/refresh")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {"refreshToken": "%s"}
-                            """.formatted(refreshToken));
+                    .content(jsonMapper.writeValueAsString(new RefreshTokenRequest(refreshToken)));
         }
 
         @Test
@@ -220,7 +208,7 @@ class AuthControllerTest extends ControllerTestBase {
         void shouldReturn400_whenRequestFieldIsBlank() throws Exception {
             mockMvc.perform(refreshRequest(""))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").isArray())
@@ -237,7 +225,7 @@ class AuthControllerTest extends ControllerTestBase {
 
             mockMvc.perform(refreshRequest(REFRESH_TOKEN))
                     .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.BAD_CREDENTIALS.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
@@ -250,7 +238,7 @@ class AuthControllerTest extends ControllerTestBase {
 
             mockMvc.perform(refreshRequest(REFRESH_TOKEN))
                     .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.TOKEN_EXPIRED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.TOKEN_EXPIRED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
@@ -263,7 +251,7 @@ class AuthControllerTest extends ControllerTestBase {
 
             mockMvc.perform(refreshRequest(REFRESH_TOKEN))
                     .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.TOKEN_REVOKED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.TOKEN_REVOKED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
@@ -275,12 +263,10 @@ class AuthControllerTest extends ControllerTestBase {
 
         private static final String REFRESH_TOKEN = "REFRESH";
 
-        private static MockHttpServletRequestBuilder logoutRequest(String refreshToken) {
+        private MockHttpServletRequestBuilder logoutRequest(String refreshToken) {
             return post("/auth/logout")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {"refreshToken": "%s"}
-                            """.formatted(refreshToken));
+                    .content(jsonMapper.writeValueAsString(new RefreshTokenRequest(refreshToken)));
         }
 
         @Test
@@ -295,7 +281,7 @@ class AuthControllerTest extends ControllerTestBase {
         void shouldReturn400_whenRequestFieldIsBlank() throws Exception {
             mockMvc.perform(logoutRequest(""))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").isArray())
@@ -328,15 +314,10 @@ class AuthControllerTest extends ControllerTestBase {
     @Nested
     class ChangePassword {
 
-        private static MockHttpServletRequestBuilder changePasswordRequest(String oldPassword, String newPassword) {
+        private MockHttpServletRequestBuilder changePasswordRequest(String oldPassword, String newPassword) {
             return post("/auth/change-password")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {
-                            "oldPassword": "%s",
-                            "newPassword": "%s"
-                            }
-                            """.formatted(oldPassword, newPassword));
+                    .content(jsonMapper.writeValueAsString(new ChangePasswordRequest(oldPassword, newPassword)));
         }
 
         @Test
@@ -366,7 +347,7 @@ class AuthControllerTest extends ControllerTestBase {
 
             mockMvc.perform(changePasswordRequest("WrongPass1@", "NewPass1@").with(AUTH_USER))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_PASSWORD.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_PASSWORD.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
@@ -376,7 +357,7 @@ class AuthControllerTest extends ControllerTestBase {
         void shouldReturn400_whenRequestFieldsAreBlank() throws Exception {
             mockMvc.perform(changePasswordRequest("", "").with(AUTH_USER))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").isArray())
@@ -390,7 +371,7 @@ class AuthControllerTest extends ControllerTestBase {
         void shouldReturn400_whenNewPassIsInvalid() throws Exception {
             mockMvc.perform(changePasswordRequest("OldPass1@", "newpass").with(AUTH_USER))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").isArray())
@@ -404,15 +385,10 @@ class AuthControllerTest extends ControllerTestBase {
     @Nested
     class Restore {
 
-        private static MockHttpServletRequestBuilder restoreRequest(String email, String password) {
+        private MockHttpServletRequestBuilder restoreRequest(String email, String password) {
             return post("/auth/restore")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {
-                            "email": "%s",
-                            "password": "%s"
-                            }
-                            """.formatted(email, password));
+                    .content(jsonMapper.writeValueAsString(new LoginRequest(email, password)));
         }
 
         @Test
@@ -423,7 +399,7 @@ class AuthControllerTest extends ControllerTestBase {
 
             mockMvc.perform(restoreRequest("bob@mail.ru", "Password1@"))
                     .andExpect(status().isGone())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.RESTORE_WINDOW_EXPIRED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.RESTORE_WINDOW_EXPIRED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());

@@ -128,7 +128,7 @@ class AdminUserControllerTest extends ControllerTestBase {
 
             mockMvc.perform(findAllRequest().with(AUTH_ADMIN))
                     .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.ACCESS_DENIED.toString()));
+                    .andExpect(jsonPath("$.code").value(ErrorCode.ACCESS_DENIED.name()));
 
             verifyNoInteractions(userService);
             verify(roleChecker).isStillAdmin(any(Authentication.class));
@@ -143,23 +143,17 @@ class AdminUserControllerTest extends ControllerTestBase {
 
             return post("/admin/users")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {
-                            "username": "%s",
-                            "password": "%s",
-                            "email": "%s",
-                            "role": "%s"
-                            }
-                            """.formatted(username, password, email, Role.USER));
+                    .content(jsonMapper.writeValueAsString(
+                            new CreateUserRequest(username, password, email, Role.USER)));
         }
 
         @Test
         void shouldReturn201WithUserInformation_whenRequestIsValid() throws Exception {
-            when(userService.createUser(new CreateUserRequest("Bob", "Password1@", "bob@mail.ru", Role.USER)))
+            when(userService.createUser(
+                    new CreateUserRequest("Bob", "Password1@", "bob@mail.ru", Role.USER)))
                     .thenReturn(new UserResponse(1L, "Bob", "bob@mail.ru", Role.USER));
 
-            mockMvc.perform(createRequest(
-                            "Bob", "Password1@", "bob@mail.ru")
+            mockMvc.perform(createRequest("Bob", "Password1@", "bob@mail.ru")
                             .with(AUTH_ADMIN))
                     .andExpect(status().isCreated())
                     .andExpect(header().string("Location", containsString("/admin/users/1")))
@@ -175,7 +169,7 @@ class AdminUserControllerTest extends ControllerTestBase {
             mockMvc.perform(createRequest("", "", "")
                             .with(AUTH_ADMIN))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").isArray())
@@ -190,7 +184,7 @@ class AdminUserControllerTest extends ControllerTestBase {
             mockMvc.perform(createRequest("Bob", "a", "bob@mail.ru")
                             .with(AUTH_ADMIN))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").isArray())
@@ -205,7 +199,7 @@ class AdminUserControllerTest extends ControllerTestBase {
             mockMvc.perform(createRequest("a", "Password1@", "bob@mail.ru")
                             .with(AUTH_ADMIN))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").isArray())
@@ -219,7 +213,7 @@ class AdminUserControllerTest extends ControllerTestBase {
             mockMvc.perform(createRequest("Bob", "Password1@", "not-an-email")
                             .with(AUTH_ADMIN))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").isArray())
@@ -249,14 +243,14 @@ class AdminUserControllerTest extends ControllerTestBase {
 
         @Test
         void shouldReturn409_whenUserAlreadyExists() throws Exception {
-            when(userService.createUser(new CreateUserRequest(
-                    "Bob", "Password1@", "bob@mail.ru", Role.USER)))
+            when(userService.createUser(
+                    new CreateUserRequest("Bob", "Password1@", "bob@mail.ru", Role.USER)))
                     .thenThrow(new UserAlreadyExistsException("error message"));
 
             mockMvc.perform(createRequest("Bob", "Password1@", "bob@mail.ru")
                             .with(AUTH_ADMIN))
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_ALREADY_EXISTS.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_ALREADY_EXISTS.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
@@ -272,8 +266,8 @@ class AdminUserControllerTest extends ControllerTestBase {
 
         @Test
         void shouldReturnUserInformation_whenRequestIsValid() throws Exception {
-            when(userService.findById(USER_ID)).thenReturn(new UserResponse(
-                    1L, "Bob", "bob@mail.ru", Role.USER));
+            when(userService.findById(USER_ID)).thenReturn(
+                    new UserResponse(1L, "Bob", "bob@mail.ru", Role.USER));
 
             mockMvc.perform(findByIdRequest(USER_ID).with(AUTH_ADMIN))
                     .andExpect(status().isOk())
@@ -314,7 +308,7 @@ class AdminUserControllerTest extends ControllerTestBase {
 
             mockMvc.perform(findByIdRequest(USER_ID).with(AUTH_ADMIN))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_NOT_FOUND.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_NOT_FOUND.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
@@ -330,8 +324,8 @@ class AdminUserControllerTest extends ControllerTestBase {
 
         @Test
         void shouldReturnUserInformation() throws Exception {
-            when(userService.findByUsername("Bob")).thenReturn(new UserResponse(
-                    1L, "Bob", "bob@mail.ru", Role.USER));
+            when(userService.findByUsername("Bob")).thenReturn(
+                    new UserResponse(1L, "Bob", "bob@mail.ru", Role.USER));
 
             mockMvc.perform(findByUsernameRequest("Bob").with(AUTH_ADMIN))
                     .andExpect(status().isOk())
@@ -364,7 +358,7 @@ class AdminUserControllerTest extends ControllerTestBase {
 
             mockMvc.perform(findByUsernameRequest("Bob").with(AUTH_ADMIN))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_NOT_FOUND.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_NOT_FOUND.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
@@ -409,7 +403,7 @@ class AdminUserControllerTest extends ControllerTestBase {
 
             mockMvc.perform(deleteRequest(USER_ID).with(AUTH_ADMIN))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_NOT_FOUND.toString()))
+                    .andExpect(jsonPath("$.code").value(ErrorCode.USER_NOT_FOUND.name()))
                     .andExpect(jsonPath("$.message").exists())
                     .andExpect(jsonPath("$.timestamp").exists())
                     .andExpect(jsonPath("$.errors").doesNotExist());
