@@ -66,7 +66,7 @@ class AuthControllerTest extends ControllerTestBase {
         @Test
         void shouldReturn409WithErrorResponse_whenUserAlreadyExists() throws Exception {
             when(authService.register(any(RegisterRequest.class)))
-                    .thenThrow(new UserAlreadyExistsException("error message"));
+                    .thenThrow(UserAlreadyExistsException.byEmail("bob@mail.ru"));
 
             mockMvc.perform(registerRequest("Bob", "Password1@", "bob@mail.ru"))
                     .andExpect(status().isConflict())
@@ -234,7 +234,7 @@ class AuthControllerTest extends ControllerTestBase {
         @Test
         void shouldReturn401_whenTokenIsExpired() throws Exception {
             when(authService.refresh(REFRESH_TOKEN))
-                    .thenThrow(new ExpiredRefreshTokenException("error message"));
+                    .thenThrow(new ExpiredRefreshTokenException());
 
             mockMvc.perform(refreshRequest(REFRESH_TOKEN))
                     .andExpect(status().isUnauthorized())
@@ -247,7 +247,7 @@ class AuthControllerTest extends ControllerTestBase {
         @Test
         void shouldReturn401_whenTokenIsRevoked() throws Exception {
             when(authService.refresh(REFRESH_TOKEN))
-                    .thenThrow(new RevokedTokenException("error message"));
+                    .thenThrow(new RevokedTokenException());
 
             mockMvc.perform(refreshRequest(REFRESH_TOKEN))
                     .andExpect(status().isUnauthorized())
@@ -343,7 +343,7 @@ class AuthControllerTest extends ControllerTestBase {
         @Test
         void shouldReturn400_whenOldPassIsWrong() throws Exception {
             when(authService.changePassword(USER_ID, new ChangePasswordRequest("WrongPass1@", "NewPass1@")))
-                    .thenThrow(new InvalidPasswordException("error message"));
+                    .thenThrow(new InvalidPasswordException());
 
             mockMvc.perform(changePasswordRequest("WrongPass1@", "NewPass1@").with(AUTH_USER))
                     .andExpect(status().isBadRequest())
@@ -395,7 +395,7 @@ class AuthControllerTest extends ControllerTestBase {
         void shouldReturn410_whenRetentionPeriodExpired() throws Exception {
 
             when(authService.restore(new LoginRequest("bob@mail.ru", "Password1@")))
-                    .thenThrow(new RestoreWindowExpiredException("error message"));
+                    .thenThrow(new RestoreWindowExpiredException());
 
             mockMvc.perform(restoreRequest("bob@mail.ru", "Password1@"))
                     .andExpect(status().isGone())

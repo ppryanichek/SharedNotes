@@ -89,11 +89,11 @@ public class RefreshTokenService {
         if (refreshToken.isRevoked()) {
             refreshTokenRepository.revokeAllByUserId(refreshToken.getUser().getId());
             log.warn("Reuse of revoked refresh token detected for user {}", refreshToken.getUser().getId());
-            throw new RevokedTokenException("Token reuse detected, all sessions revoked!");
+            throw new RevokedTokenException();
         }
 
         if (refreshToken.getExpiresAt().isBefore(Instant.now(clock)))
-            throw new ExpiredRefreshTokenException("Refresh token expired!");
+            throw new ExpiredRefreshTokenException();
 
         return refreshToken;
     }

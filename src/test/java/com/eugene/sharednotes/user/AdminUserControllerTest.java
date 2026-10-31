@@ -245,7 +245,7 @@ class AdminUserControllerTest extends ControllerTestBase {
         void shouldReturn409_whenUserAlreadyExists() throws Exception {
             when(userService.createUser(
                     new CreateUserRequest("Bob", "Password1@", "bob@mail.ru", Role.USER)))
-                    .thenThrow(new UserAlreadyExistsException("error message"));
+                    .thenThrow(UserAlreadyExistsException.byEmail("bob@mai.ru"));
 
             mockMvc.perform(createRequest("Bob", "Password1@", "bob@mail.ru")
                             .with(AUTH_ADMIN))
@@ -304,7 +304,7 @@ class AdminUserControllerTest extends ControllerTestBase {
 
         @Test
         void shouldReturn404WithErrorResponse_whenUserDoesNotExist() throws Exception {
-            when(userService.findById(USER_ID)).thenThrow(new UserNotFoundException("error message"));
+            when(userService.findById(USER_ID)).thenThrow(UserNotFoundException.byId(USER_ID));
 
             mockMvc.perform(findByIdRequest(USER_ID).with(AUTH_ADMIN))
                     .andExpect(status().isNotFound())
@@ -354,7 +354,7 @@ class AdminUserControllerTest extends ControllerTestBase {
 
         @Test
         void shouldReturn404WithErrorResponse_whenUserDoesNotExist() throws Exception {
-            when(userService.findByUsername("Bob")).thenThrow(new UserNotFoundException("error message"));
+            when(userService.findByUsername("Bob")).thenThrow(UserNotFoundException.byUsername("Bob"));
 
             mockMvc.perform(findByUsernameRequest("Bob").with(AUTH_ADMIN))
                     .andExpect(status().isNotFound())
@@ -398,7 +398,7 @@ class AdminUserControllerTest extends ControllerTestBase {
 
         @Test
         void shouldReturn404_whenUserDoesNotExist() throws Exception {
-            doThrow(new UserNotFoundException("error message"))
+            doThrow(UserNotFoundException.byId(USER_ID))
                     .when(userService).deleteUser(USER_ID);
 
             mockMvc.perform(deleteRequest(USER_ID).with(AUTH_ADMIN))

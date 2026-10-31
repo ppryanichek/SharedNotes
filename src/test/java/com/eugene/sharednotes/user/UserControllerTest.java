@@ -60,7 +60,7 @@ class UserControllerTest extends ControllerTestBase {
         @Test
         void shouldReturn404WithErrorResponse_whenUserDoesNotExist() throws Exception {
             when(userService.findById(USER_ID))
-                    .thenThrow(new UserNotFoundException("User not found with id: " + USER_ID));
+                    .thenThrow(UserNotFoundException.byId(USER_ID));
 
             mockMvc.perform(get("/users/me").with(AUTH_USER))
                     .andExpect(status().isNotFound())
@@ -107,7 +107,7 @@ class UserControllerTest extends ControllerTestBase {
         @Test
         void shouldReturn409WithErrorResponse_whenUserAlreadyExists() throws Exception {
             when(userService.updateUser(USER_ID, REQUEST))
-                    .thenThrow(new UserAlreadyExistsException("err message"));
+                    .thenThrow(UserAlreadyExistsException.byEmail(REQUEST.email()));
 
             mockMvc.perform(updateRequest("eugene", "eugene@mail.ru"))
                     .andExpect(status().isConflict())
@@ -120,7 +120,7 @@ class UserControllerTest extends ControllerTestBase {
         @Test
         void shouldReturn404WithErrorResponse_whenUserDoesNotExist() throws Exception {
             when(userService.updateUser(USER_ID, REQUEST))
-                    .thenThrow(new UserNotFoundException("err message"));
+                    .thenThrow(UserNotFoundException.byId(USER_ID));
 
             mockMvc.perform(updateRequest("eugene", "eugene@mail.ru"))
                     .andExpect(status().isNotFound())
@@ -190,7 +190,7 @@ class UserControllerTest extends ControllerTestBase {
 
         @Test
         void shouldReturn404WithErrorResponse_whenUserDoesNotExist() throws Exception {
-            doThrow(new UserNotFoundException("User not found with id: " + USER_ID))
+            doThrow(UserNotFoundException.byId(USER_ID))
                     .when(userService).deleteUser(USER_ID);
 
             mockMvc.perform(delete("/users/me").with(AUTH_USER))

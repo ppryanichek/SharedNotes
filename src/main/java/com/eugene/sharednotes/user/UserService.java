@@ -84,7 +84,7 @@ public class UserService {
      */
     public UserResponse findByUsername(String username) {
         UserEntity user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UserNotFoundException("User not found with username: " + username));
+                .orElseThrow(() -> UserNotFoundException.byUsername(username));
         return UserResponse.from(user);
     }
 
@@ -108,10 +108,10 @@ public class UserService {
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
         if (userRepository.existsByEmailIncludingSoftDeleted(request.email()))
-            throw new UserAlreadyExistsException("User already exists with this email: " + request.email());
+            throw UserAlreadyExistsException.byEmail(request.email());
 
         if (userRepository.existsByUsernameIncludingSoftDeleted(request.username()))
-            throw new UserAlreadyExistsException("User already exists with this username: " + request.username());
+            throw UserAlreadyExistsException.byUsername(request.username());
 
         UserEntity newUser = UserEntity.builder()
                 .username(request.username())
@@ -142,7 +142,7 @@ public class UserService {
         if (request.username() != null && !request.username().isBlank()) {
             if (!request.username().equals(updateUser.getUsername())
                     && userRepository.existsByUsernameIncludingSoftDeleted(request.username()))
-                throw new UserAlreadyExistsException("User already exists with this username: " + request.username());
+                throw UserAlreadyExistsException.byUsername(request.username());
 
             updateUser.setUsername(request.username());
         }
@@ -150,7 +150,7 @@ public class UserService {
         if (request.email() != null && !request.email().isBlank()) {
             if (!request.email().equals(updateUser.getEmail())
                     && userRepository.existsByEmailIncludingSoftDeleted(request.email()))
-                throw new UserAlreadyExistsException("User already exists with this email: " + request.email());
+                throw UserAlreadyExistsException.byEmail(request.email());
 
             updateUser.setEmail(request.email());
         }
@@ -171,7 +171,7 @@ public class UserService {
         UserEntity userEntity = getUserOrThrow(id);
 
         if (!passwordEncoder.matches(oldPassword, userEntity.getPassword()))
-            throw new InvalidPasswordException("Current password is incorrect");
+            throw new InvalidPasswordException();
 
         userEntity.setPassword(passwordEncoder.encode(newPassword));
     }
@@ -206,14 +206,14 @@ public class UserService {
     @Transactional
     public UserResponse restore(String email, String password) {
         UserEntity userEntity = userRepository.findSoftDeletedByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+                .orElseThrow(() -> UserNotFoundException.byEmail(email));
 
         if (!passwordEncoder.matches(password, userEntity.getPassword()))
             throw new BadCredentialsException("Invalid email or password");
 
         Instant cutoff = Instant.now(clock).minus(retentionPeriod);
         if (userEntity.getDeletedAt().isBefore(cutoff))
-            throw new RestoreWindowExpiredException("Account restoration period has expired");
+            throw new RestoreWindowExpiredException();
 
         userEntity.setDeletedAt(null);
 
@@ -226,6 +226,6 @@ public class UserService {
 
     private UserEntity getUserOrThrow(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
+                .orElseThrow(() -> UserNotFoundException.byId(id));
     }
 }
