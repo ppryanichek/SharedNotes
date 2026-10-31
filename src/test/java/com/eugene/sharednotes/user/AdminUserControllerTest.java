@@ -78,7 +78,7 @@ class AdminUserControllerTest extends ControllerTestBase {
                     .andExpect(jsonPath("$.content").isArray())
                     .andExpect(jsonPath("$.content[0].username").value("Bob"))
                     .andExpect(jsonPath("$.content[0].password").doesNotExist())
-                    .andExpect(jsonPath("$.totalElements").value(1));
+                    .andExpect(jsonPath("$.page.totalElements").value(1));
 
             ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
             verify(userService).findAll(captor.capture());
@@ -96,7 +96,7 @@ class AdminUserControllerTest extends ControllerTestBase {
             mockMvc.perform(findAllRequest().with(AUTH_ADMIN))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.content").isArray())
-                    .andExpect(jsonPath("$.totalElements").value(1));
+                    .andExpect(jsonPath("$.page.totalElements").value(1));
 
             ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
             verify(userService).findAll(captor.capture());
