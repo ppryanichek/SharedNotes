@@ -1,4 +1,5 @@
 # SharedNotes
+
 SharedNotes – REST API для заметок с возможностью делиться ими с другими пользователями.
 
 ## Стек
@@ -19,17 +20,26 @@ SharedNotes – REST API для заметок с возможностью де�
 - Scheduled чистка soft-deleted пользователей и refresh-токенов
 
 USER (свой аккаунт):
-  - Просмотр
-  - Изменение
-  - Удаление
+- просмотр;
+- изменение;
+- удаление.
 
 ADMIN:
-  - Просмотр списка пользователей
-  - Поиск пользователя по username и id
-  - Создание и удаление пользователя
+- просмотр списка пользователей;
+- поиск пользователя по username и id;
+- создание и удаление пользователя.
+
+NOTES (свои заметки):
+- создание;
+- просмотр;
+- поиск по заголовку или тексту;
+- изменение;
+- удаление.
 
 ## Эндпоинты
+
 ### Auth
+
 | Метод | Путь                    | Описание                               | Токен                          |
 |-------|-------------------------|----------------------------------------|--------------------------------|
 | POST  | `/auth/register`        | Регистрация                            | –                              |
@@ -41,6 +51,7 @@ ADMIN:
 | POST  | `/auth/restore`         | Восстановление soft-deleted аккаунта   | –                              |
 
 ### Users
+
 | Метод  | Путь        | Описание                       | Токен        |
 |--------|-------------|--------------------------------|--------------|
 | GET    | `/users/me` | Просмотр текущего пользователя | Access-токен |
@@ -48,6 +59,7 @@ ADMIN:
 | DELETE | `/users/me` | Soft-delete аккаунта           | Access-токен |
 
 ### Admin
+
 Все эндпоинты требуют access-токен и роль ADMIN.
 
 | Метод  | Путь                               | Описание                                  |
@@ -58,7 +70,27 @@ ADMIN:
 | POST   | `/admin/users`                     | Создание нового пользователя              |
 | DELETE | `/admin/users/{id}`                | Soft-delete аккаунта                      |
 
+### Notes
+
+Все эндпоинты требуют access-токен для уточнения владельца заметки.
+
+| Метод  | Путь          | Описание                              |
+|--------|---------------|---------------------------------------|
+| POST   | `/notes`      | Создание заметки                      |
+| GET    | `/notes/{id}` | Просмотр заметки по id                |
+| GET    | `/notes`      | Поиск заметок по заголовку или тексту |
+| PATCH  | `/notes/{id}` | Изменение заметки                     |
+| DELETE | `/notes/{id}` | Удаление заметки                      |
+
+Параметры поиска `text`, `page`, `size`, `sort`.
+`text` необязательный, при отсутствии – возвращаются все свои заметки.
+По умолчанию параметры поиска установлены на следующие значения:
+- `page` = 0;
+- `size` = 20;
+- `sort` = `updatedAt,desc` (сначала последние изменённые).
+
 ## Запуск
+
 **Требования**
 
 - JDK 21
@@ -71,27 +103,33 @@ cp .env.example .env
 ```
 
 База данных:
-  - DB_NAME
-  - DB_USER
-  - DB_PASSWORD
+
+- DB_NAME
+- DB_USER
+- DB_PASSWORD
 
 Токены:
-  - JWT_SECRET
-  - ACCESS_EXPIRATION (default 15m)
-  - REFRESH_EXPIRATION (default 7d)
+
+- JWT_SECRET
+- ACCESS_EXPIRATION (default 15m)
+- REFRESH_EXPIRATION (default 7d)
 
 Тестовый админ:
-  - ADMIN_USERNAME
-  - ADMIN_EMAIL
-  - ADMIN_PASSWORD
+
+- ADMIN_USERNAME
+- ADMIN_EMAIL
+- ADMIN_PASSWORD
 
 ADMIN_PASSWORD: минимум 8 символов, цифра, заглавная буква, спецсимвол.
 
 JWT_SECRET:
+
 ```bash
 openssl rand -base64 32
 ```
+
 Запуск БД и приложения:
+
 ```bash
 docker compose up -d
 ```
@@ -99,11 +137,14 @@ docker compose up -d
 ## Тесты
 
 Команда запуска:
+
 ```bash
 ./gradlew test
 ```
 
 Покрытие пакетов:
+
+- note
 - user
 - auth
 - common
@@ -113,7 +154,7 @@ docker compose up -d
 Юнит, слайс, интеграционные на Testcontainers (поднимают PostgreSQL).
 
 ## TODO
-- Notes CRUD
-- Search, filter, pagination
-- Sharing
-- Swagger
+
+- sharing;
+- filters (JPA Specifications);
+- swagger.
