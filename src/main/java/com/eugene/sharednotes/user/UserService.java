@@ -4,10 +4,10 @@ import com.eugene.sharednotes.auth.RefreshTokenService;
 import com.eugene.sharednotes.common.Role;
 import com.eugene.sharednotes.exceptions.InvalidPasswordException;
 import com.eugene.sharednotes.exceptions.RestoreWindowExpiredException;
-import com.eugene.sharednotes.user.dto.CreateUserRequest;
-import com.eugene.sharednotes.user.dto.UserResponse;
 import com.eugene.sharednotes.exceptions.UserAlreadyExistsException;
 import com.eugene.sharednotes.exceptions.UserNotFoundException;
+import com.eugene.sharednotes.user.dto.CreateUserRequest;
+import com.eugene.sharednotes.user.dto.UserResponse;
 import com.eugene.sharednotes.user.dto.UserUpdateRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -73,10 +73,7 @@ public class UserService {
      * @throws UserNotFoundException если пользователь с данным id не найден.
      */
     public UserResponse findById(Long id) {
-        UserEntity user = userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
-        return UserResponse.from(user);
-
+        return UserResponse.from(getUserOrThrow(id));
     }
 
     /**
@@ -140,8 +137,7 @@ public class UserService {
      */
     @Transactional
     public UserResponse updateUser(Long id, UserUpdateRequest request) {
-        UserEntity updateUser = userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
+        UserEntity updateUser = getUserOrThrow(id);
 
         if (request.username() != null && !request.username().isBlank()) {
             if (!request.username().equals(updateUser.getUsername())
@@ -172,8 +168,7 @@ public class UserService {
      */
     @Transactional
     public void changePassword(Long id, String oldPassword, String newPassword) {
-        UserEntity userEntity = userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
+        UserEntity userEntity = getUserOrThrow(id);
 
         if (!passwordEncoder.matches(oldPassword, userEntity.getPassword()))
             throw new InvalidPasswordException("Current password is incorrect");
@@ -192,8 +187,7 @@ public class UserService {
      */
     @Transactional
     public void deleteUser(Long id) {
-        UserEntity userEntity = userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
+        UserEntity userEntity = getUserOrThrow(id);
 
         userEntity.setDeletedAt(Instant.now(clock));
         refreshTokenService.revokeAll(id);
@@ -205,8 +199,8 @@ public class UserService {
      * <p>Поиск идёт нативным запросом для обхода {@code @SQLRestriction}.
      *
      * @return id пользователя.
-     * @throws UserNotFoundException если удалённого пользователь с данным email не существует.
-     * @throws BadCredentialsException если пароль неверный.
+     * @throws UserNotFoundException         если удалённого пользователя с данным email не существует.
+     * @throws BadCredentialsException       если пароль неверный.
      * @throws RestoreWindowExpiredException если окно восстановления истекло.
      */
     @Transactional
@@ -228,5 +222,10 @@ public class UserService {
 
     public boolean adminExists() {
         return userRepository.existsByRole(Role.ADMIN);
+    }
+
+    private UserEntity getUserOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
     }
 }
